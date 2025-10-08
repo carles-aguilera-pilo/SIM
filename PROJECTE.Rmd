@@ -1,0 +1,44 @@
+---
+title: "PROJECTE"
+author: "Carles Aguilera"
+date: "2025-10-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+df <- read.csv("RealEstate_Georgia.csv")
+View(df)
+```
+
+
+```{r}
+summary(df)
+```
+
+
+
+```{r}
+str(df)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
