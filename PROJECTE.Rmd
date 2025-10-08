@@ -27,6 +27,7 @@ str(df)
 
 df$datePostedString <- as.Date(df$datePostedString, format = "%y-%m-%d")
 df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
+length(df[which(df$datePostedString == 2021),]$datePostedString)
 df$stateId <- as.factor(df$stateId)
 which(df$stateId == '16')
 
