@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
 ```
 
 ```{r}
@@ -24,6 +25,16 @@ summary(df)
 ```{r}
 str(df)
 
+df$datePostedString <- as.Date(df$datePostedString, format = "%y-%m-%d")
+df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
+df$stateId <- as.factor(df$stateId)
+which(df$stateId == '16')
+
+# Donat que algunes de les columnes tenen els mateixos valors, les eliminarem perquè no ens proporcionene en informació rellevant.
+df <- df[-c('hasBadGeocode', '')]
+df 
+View(df)
+which(df$currency != 'USD')
 
 ```
 
