@@ -15,9 +15,51 @@ df <- read.csv("RealEstate_Georgia.csv")
 View(df)
 ```
 
+# Data  preparation
+
+The first step of a data science project involves cleaning the raw data set. In this section we address how to deal with missing values, correcting inconsistencies and transformating the data into a format suitable for algorithms. Therefore, in this section, we will study each variable in order to clean as much as possible the dataset for the future results to be as acurate as possible.
+
+## Variable 1: stateId
+
+The variable stateId is nominal since it represents a state category. Since the value never changes, this variable does not provide information to any statistical model. Therefore, it is typically removed.
+```{r}
+summary(df$stateId)
+which(df$stateId != "16")
+df <- subset(df, select = -stateId)
+```
+
+## Variable 2: countyId
+
+The variable countyId is a nominal variable that represents the identifier for each country a house is in. If we also see the variable Country, we might see some inconsistencies. This identifier should be representing each country, but if we see the variable Country, we can see there is only one possible value (which is USA). This inconsistency lead us to removing this variable as well as the country variable since we already know that this dataset is from USA, specifically in Georgia, so we can ommit this type of data, since it doesn't add any useful information.
+
+**REVISAR**: countyId != countryId. És útil el countyId per a predir price?
 
 ```{r}
-summary(df)
+#df <- subset(df, select = -countyId)
+```
+
+## Variable 3: cityId
+
+**REVISAR**: Ens hem de quedar o amb cityId o amb City. Depenent de què fem, és un o l'altre.
+
+## Variable 4: County
+
+The variable county is a nominal variable representing the county of each house. Since the country of all the houses in the dataset is USA, we can remove that variable since it doesn't add useful information.
+
+```{r}
+which(df$country != "USA")
+df <- subset(df, select = -country)
+```
+
+## variable 5: datePostedString
+
+The variable datePostedString is a nominal variable that represents the date when the house was published. From the instructions of this practice, we can see that we need to retain the observations that were posted on **2021 only**.
+
+```{r}
+df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
+df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
+which(df$datePostedString != 2021)
+df <- df[df$datePostedString == 2021,]
 ```
 
 
@@ -25,7 +67,7 @@ summary(df)
 ```{r}
 str(df)
 
-df$datePostedString <- as.Date(df$datePostedString, format = "%y-%m-%d")
+df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
 df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
 length(df[which(df$datePostedString == 2021),]$datePostedString)
 df$stateId <- as.factor(df$stateId)
