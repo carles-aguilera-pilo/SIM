@@ -15,6 +15,7 @@ df <- read.csv("RealEstate_Georgia.csv")
 View(df)
 ```
 
+
 # Data  preparation
 
 The first step of a data science project involves cleaning the raw data set. In this section we address how to deal with missing values, correcting inconsistencies and transformating the data into a format suitable for algorithms. Therefore, in this section, we will study each variable in order to clean as much as possible the dataset for the future results to be as acurate as possible.
@@ -34,7 +35,14 @@ The variable countyId is a nominal variable that represents the identifier for e
 
 **REVISAR**: countyId != countryId. És útil el countyId per a predir price?
 
+**DETALL** : countyID pot ser que estigui relacionat amb county --> però em dona la sensació que countyID va més al detall, en canvi country engloba més (un nivell d'agreggació superior).
+
 ```{r}
+table(df$countyId)
+df$coun
+which(table(df$countyId) > 1)
+which(table(df$countyId) > 2)
+# IN THAT CASE WE OBSERVE WITH THAT TABLE AND THIS CONDIITONS THAT EACH VALUE APPEARS ONLY ONE TIME, AND SOMETIMES TWO TIMES, BUT NO MORE THAN 2
 #df <- subset(df, select = -countyId)
 ```
 
@@ -42,7 +50,9 @@ The variable countyId is a nominal variable that represents the identifier for e
 
 **REVISAR**: Ens hem de quedar o amb cityId o amb City. Depenent de què fem, és un o l'altre.
 
-## Variable 4: County
+**DETALL** JO PERSONALMENT EM QUEDARIA AMB CITY, EL ID TAMPOC ENS DONARÀ GAIRE INFORMACIÓ, PERÒ EL NOM PODER SI QUE ENS INTERESSA MÉS. A L'HORA DE FER TEST ENTRE DIFERENTS CIUTATS I TREURE'N CONCLUSIONS.
+
+## Variable 4: Country
 
 The variable county is a nominal variable representing the county of each house. Since the country of all the houses in the dataset is USA, we can remove that variable since it doesn't add useful information.
 
@@ -58,11 +68,11 @@ The variable datePostedString is a nominal variable that represents the date whe
 ```{r}
 df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
 df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
-which(df$datePostedString != 2021)
+size_out_of_year <- which(df$datePostedString != 2021); length(size_out_of_year)
 df <- df[df$datePostedString == 2021,]
 ```
 
-
+**REVISAR** AQUEST FRAGMENT DE CODI, PER A QUÈ ÉS??
 
 ```{r}
 str(df)
@@ -82,15 +92,118 @@ which(df$currency != 'USD')
 ```
 
 
+# variable 6 IS_BANK_OWNED.
+
+```{r}
+str(df$is_bankOwned)
+which(df$is_bankOwned > 1 | df$is_bankOwned < 0) 
+
+# SO THAT MEANS, AS WE CAN SEE IN THE PREVIEW, THAT THIS VARIABLE IS NUMERIC BUT CAN BE                                     CONSIDERED AS CATEGORICAL, AND WE THINK THAT IS THE BEST OPTION, TO CONSIDER AS A                                         CATEGORICAL VARIABLE.
+
+which(df$is_bankOwned == 1)
+which(df$is_bankOwned != 0)
+
+"LET'S TRANSFORM THAT VARIABLE TO A CATEOGIRCAL / FACTOR VARIABLE."
+
+df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES"))
+
+```
+
+
+# variable 7 IS_FOR_AUCTION
+
+```{r}
+str(df$is_forAuction)
+
+which(df$is_forAuction < 0 | df$is_forAuction > 1)
+which(df$is_forAuction != 0)
+
+"WE HAVE THE SAME CASE AS BEFORE, SO LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE. "
+
+df$is_forAuction <- factor(df$is_forAuction, labels = c("NO", "YES"))
+```
+
+**REVISAR** EN AMBDOS CASSOS, VARIABLE 6 I 7, TENIM UN UNIC VALOR DIFERENT A LA RESTA, COM HO TRACTARIEM EN AQUEST CAS? 
+JO PER MI HO DEIXEM, PERÒ AL SER NOMÉS UN, NO SEMBLA SOSPITOS, JUST NOMÉS UN ÚNIC CAS EN CADA UN ? 
+
+# variable 8 event
+
+```{r}
+str(df$event)
+table(df$event)
+
+# MAYBE THAT VARIABLE IS INTERESTING FOR FURTHER ANALYSIS IN DATA, LET'S TAKE AND WE'LL NOT ERASE IT.
+
+sum(is.na(df$event))
+
+# WE DON'T HAVE MISSING VALUES, SO THAT'S PERFECT ALSO. 
+# MAYBE IT'S INTERESTING TO CONVERT TO FACTOR
+
+df$event <- as.factor(df$event)
+```
+
+
+# variable 9 TIME
+
+IN THAT CASE, THE TIME FOR THE TARGET VARIABLE THAT IS PRICE, DOESN'T CONTRIBUTE, SO WE CAN EREASE IT. 
+```{r}
+df <- subset(df, select = -time)
+```
+
+# variable 10 PRICE
+
+PRICE IS THE TARGET VARIABLE, SO IT'S SO IMPORTANT, SO BASICALLY WE'LL CHECK AT ALL THAT WE HAVE FOR THIS VARIABLE ALL CORRECT, THAT MEANS NO MISSING VALUES, AND ALSO, LET'S CHECK AND TRY TO RESPONSE TO THE QUESTION AS IF THE PRICE IS NORMALLY DISTRIBUITED OR NOT
+
+```{r}
+str(df$price)
+sum(is.na(df$price))
+
+"ES UNA VARIABLE NUMERICA, COM ERA D'ESPERAR I NO TE MISSING VALUES, PER TANT, DE MOMENT SEMBLA QUE LA VARIABLE ESTÀ BÉ."
+```
+
+
+#   FIRST DATA ANALYSIS
+
+  Un dels passos més importants es veure si la variable de resposta, és a dir, la variable target,
+  en aquest cas price, segueix una distribució normal o no, és a dir si es ditribuida normally o no. 
+  
+  A partir d'aqui el que farem és un anàlisi tant grafic com també estadisitic per valorar la normalitat de la variable     target price. 
+  
+```{r}
+
+
+hist(df$price)
+qqnorm(df$price)
+qqline(df$price)
+
+# IN THAT CASE WE CAN'T SAY THAT IS NORMALLY DISTRIBUITED, BUT LET'S SEE IF WITH THE SHAPIRO.TEST THE RESULT IS THE SAME    OR NOT. 
+
+#shapiro.test(df$price) # Problema, tenim massses!!!!!!!!!!!
+
+
+"LET'S CHECK APPLAYING THE LOGARITMIC TRANSFORMATION"
+
+hist(log(df$price))
+qqnorm(log(df$price))
+qqline(log(df$price))
+
+```
+  
 
 
 
+# Detect univariate outlayers and multivariate outlayers. 
+
+Una de les coses mes importants que hem de fer es considerar els univariate outlayers, ja que aquests, juntament amb els multivariate outlayers, són cassos estranys fora de la normalitat, i per tant, els haurem d'analitzar amb certa atenció per veure que esta succeïnt amb aquest valor més estrany del noistre conjunt de dades. 
+
+# Errors and missing values
 
 
+Una de les coses mes importants es corregir les parts amb certs errors o missing values. Hem de garantir en tot moment que les dades amb les que treballem tenen qualitat i que no hi han missing values. 
 
+Per aquest motiu una de les coses més importants que hem de fer es corregir aquests errors i tractar-los. 
 
-
-
+En aquest cas el que farem és ús d'una funció molt important que ja hem trebalalt amb ella varies vegades, de la llibreria de FactoMineR , que es la de mice, que ens permetra fer imputació de missing values, per assegurar que treballem amb dades de bona qualitat i que per tant, no hi han missing values. 
 
 
 
