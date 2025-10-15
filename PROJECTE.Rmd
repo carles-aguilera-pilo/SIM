@@ -94,6 +94,11 @@ which(df$currency != 'USD')
 
 # variable 6 IS_BANK_OWNED.
 
+This variable indicates whether the property belongs to the bank or not. Therefore, it provides information about the bank ownership of the property.
+Since it is a binary variable, we consider it more appropriate to treat it as a categorical (qualitative) variable, distinguishing two categories: Yes and No, depending on whether the property is bank-owned or not.
+
+For this reason, we analyzed this variable to identify which values correspond to bank-owned properties and which do not, confirming that there are only two possible values (0 and 1). Finally, we transformed the variable into a categorical variable with these two levels.
+
 ```{r}
 str(df$is_bankOwned)
 which(df$is_bankOwned > 1 | df$is_bankOwned < 0) 
@@ -112,6 +117,9 @@ df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES"))
 
 # variable 7 IS_FOR_AUCTION
 
+This variable indicates whether a given house is being auctioned or not. In this case, the treatment applied is very similar to the one used previously: we checked for variability between the values 0 and 1, in order to confirm that there are houses that are auctioned and others that are not.
+Once this variability was confirmed, we proceeded to transform the variable into a categorical one, assigning two levels: Yes and No, depending on whether the house belongs to an auction or not.
+
 ```{r}
 str(df$is_forAuction)
 
@@ -128,6 +136,10 @@ JO PER MI HO DEIXEM, PERÒ AL SER NOMÉS UN, NO SEMBLA SOSPITOS, JUST NOMÉS UN 
 
 # variable 8 event
 
+This variable indicates the condition of the house. It is relevant information, as it allows us to know the current state of the property at any time. Therefore, we consider it important to keep this variable for further analyses.
+
+In addition, one of the tasks performed was to convert this variable from type char to type factor, in order to analyze in future studies whether the condition of the house has any impact or relationship with its price.
+
 ```{r}
 str(df$event)
 table(df$event)
@@ -143,13 +155,19 @@ df$event <- as.factor(df$event)
 # variable 9 TIME
 
 IN THAT CASE, THE TIME FOR THE TARGET VARIABLE THAT IS PRICE, DOESN'T CONTRIBUTE, SO WE CAN EREASE IT. 
+
+We have no specific interest in knowing the exact moment when the listing was published or when the house was for sale. We consider that this information is not essential for studying the property price.
+Therefore, it is not necessary to keep the temporal variable related to the listing or sale time of the house. 
+
 ```{r}
 df <- subset(df, select = -time)
 ```
 
 # variable 10 PRICE
 
-PRICE IS THE TARGET VARIABLE, SO IT'S SO IMPORTANT, SO BASICALLY WE'LL CHECK AT ALL THAT WE HAVE FOR THIS VARIABLE ALL CORRECT, THAT MEANS NO MISSING VALUES, AND ALSO, LET'S CHECK AND TRY TO RESPONSE TO THE QUESTION AS IF THE PRICE IS NORMALLY DISTRIBUITED OR NOT
+Price is the target variable, so it is critical. First, we will assess its data quality: ensure there are no missing values and that the records are consistent. Next, we will evaluate whether the price distribution is approximately normal and examine the presence of outliers.
+
+Because price is the dependent variable in our study, we will conduct a more in-depth analysis: describe its distribution, identify and justify outliers, and discuss which features (e.g., property condition, area, location, auction status, etc.) may explain these extreme values.
 
 ```{r}
 str(df$price)
