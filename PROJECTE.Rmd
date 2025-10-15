@@ -2,7 +2,9 @@
 title: "PROJECTE"
 author: "Carles Aguilera"
 date: "2025-10-08"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -107,6 +109,7 @@ which(df$is_bankOwned > 1 | df$is_bankOwned < 0)
 
 which(df$is_bankOwned == 1)
 which(df$is_bankOwned != 0)
+boxplot(df$is_bankOwned)
 
 "LET'S TRANSFORM THAT VARIABLE TO A CATEOGIRCAL / FACTOR VARIABLE."
 
@@ -125,7 +128,7 @@ str(df$is_forAuction)
 
 which(df$is_forAuction < 0 | df$is_forAuction > 1)
 which(df$is_forAuction != 0)
-
+boxplot(df$is_forAuction)
 "WE HAVE THE SAME CASE AS BEFORE, SO LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE. "
 
 df$is_forAuction <- factor(df$is_forAuction, labels = c("NO", "YES"))
@@ -329,7 +332,9 @@ which(df$currency != 'USD')
 df <- subset(df, select = -currency)
 ```
 
-#variable 22 / 23 / 26 LIVING AREA & LIVING AREA VALUE & building area. 
+#variable 22 / 23 / 26 LIVING AREA & LIVING AREA VALUE & building area.
+
+
 
 IN THAT CASE WE HAVE THREE VARIABLES THAT REPRESENTS THE SAME, SO HAVING BOTH OF THEM IS REDUNDANT SO IN THAT CASE WE WILL CHOOSE THE SECOND ONE, LIVING AREA VALUE.
 
