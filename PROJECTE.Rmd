@@ -20,11 +20,11 @@ View(df)
 
 # Data  preparation
 
-The first step of a data science project involves cleaning the raw data set. In this section we address how to deal with missing values, correcting inconsistencies and transformating the data into a format suitable for algorithms. Therefore, in this section, we will study each variable in order to clean as much as possible the dataset for the future results to be as acurate as possible.
+The first step of a data science project involves cleaning the raw data set. In this section we address how to deal with missing values, correcting inconsistencies and transforming the data into a format suitable for algorithms. Therefore, in this section, we will study each variable in order to clean as much as possible the dataset for the future results to be as accurate as possible.
 
-## Variable 1: stateId
+## Variable 1: *stateId*
 
-The variable stateId is nominal since it represents a state category. Since the value never changes, this variable does not provide information to any statistical model. Therefore, it is typically removed.
+Although *stateId* seems to be a nominal variable since it represents a state category, it is not really a variable because its value never changes: All rows have *stateId* = 16, which stands for Georgia state. Therefore, this column does not provide any relevant information to any statistical model, so it can be removed from our dataframe.
 ```{r}
 summary(df$stateId)
 which(df$stateId != "16")
@@ -33,115 +33,120 @@ df <- subset(df, select = -stateId)
 
 ## Variable 2: countyId
 
-The variable countyId is a nominal variable that represents the identifier for each country a house is in. If we also see the variable Country, we might see some inconsistencies. This identifier should be representing each country, but if we see the variable Country, we can see there is only one possible value (which is USA). This inconsistency lead us to removing this variable as well as the country variable since we already know that this dataset is from USA, specifically in Georgia, so we can ommit this type of data, since it doesn't add any useful information.
-
-**REVISAR**: countyId != countryId. És útil el countyId per a predir price?
-
-**DETALL** : countyID pot ser que estigui relacionat amb county --> però em dona la sensació que countyID va més al detall, en canvi country engloba més (un nivell d'agreggació superior).
+The variable *countyId* is a nominal variable with numeric values that are used to identify the county where a house is. Also, there is another nominal variable named *county* whose values are the names of the counties. When comparing these two columns an inconsistency can be noticed: We would expect rows that share the same *county* value to also share the same *countyId*, as the latter is the numerical representation of the former. However that is not the case, as the vast majority of *countyId* values are unique (only 30 of them are repeated once). As a result, we discard this column as we consider it does not provide useful insights.
 
 ```{r}
 table(df$countyId)
-df$coun
-which(table(df$countyId) > 1)
-which(table(df$countyId) > 2)
-# IN THAT CASE WE OBSERVE WITH THAT TABLE AND THIS CONDIITONS THAT EACH VALUE APPEARS ONLY ONE TIME, AND SOMETIMES TWO TIMES, BUT NO MORE THAN 2
-#df <- subset(df, select = -countyId)
+length(which(table(df$countyId) > 1)) # Number of values that are repeated at least one time
+length(which(table(df$countyId) > 2)) 
+# IN THAT CASE WE OBSERVE WITH THAT TABLE AND THIS CONDITIONS THAT EACH VALUE APPEARS ONLY ONE TIME, AND SOMETIMES TWO TIMES, BUT NO MORE THAN 2
+df <- subset(df, select = -countyId)
 ```
 
 ## Variable 3: cityId
 
-**REVISAR**: Ens hem de quedar o amb cityId o amb City. Depenent de què fem, és un o l'altre.
+The variable *cityId* is a nominal variable with numeric values. Similarly to *countyId* and *county*, there also exists a variable named *city* with the names of cities. We would assume that all rows with the same *city* value would be mapped to the same unique *cityId*, but that is not the case. As an example, there exist two rows who share a *cityId* of 17797 but belong to Atlanta and Doraville. Also, there exist two rows with *city* Dunwoody but with *cityId* 49352 and 42728.
 
-**DETALL** JO PERSONALMENT EM QUEDARIA AMB CITY, EL ID TAMPOC ENS DONARÀ GAIRE INFORMACIÓ, PERÒ EL NOM PODER SI QUE ENS INTERESSA MÉS. A L'HORA DE FER TEST ENTRE DIFERENTS CIUTATS I TREURE'N CONCLUSIONS.
+Due to this inconsistency, we consider we have to choose between one of the two columns. We have decided to keep *city* and discard *cityId* as we think that *city* provides more useful information about houses' locations.
+
+```{r}
+
+# Here we check that, for example, Dunwoody is associated with multiple cityIds (instead of a unique cityId)
+rows <- which(df$city == 'Dunwoody')
+first_cityId <- df[rows[1],]$cityId
+count1 <- 0
+for (r in rows[2:length(rows)]) {
+  if (df[r,]$cityId != first_cityId){
+    count1 = count1 + 1
+  }
+}
+
+# Here we check that, for example, 17797 is associated with multiple city (instead of a unique city)
+rows <- which(df$cityId == 17797)
+first_city <- df[rows[1],]$city
+count2 <- 0
+for (r in rows[2:length(rows)]) {
+  if (df[r,]$city != first_city){
+    count2 = count2 +1
+  }
+}
+
+count1 
+count2
+
+df <- subset(df, select = -cityId)
+```
 
 ## Variable 4: Country
 
-The variable county is a nominal variable representing the county of each house. Since the country of all the houses in the dataset is USA, we can remove that variable since it doesn't add useful information.
+The variable *country* is a nominal variable representing the name of the country of each house. Since the country of all the houses in the dataset is USA, we can remove that variable since it does not add any additional information.
 
 ```{r}
 which(df$country != "USA")
 df <- subset(df, select = -country)
 ```
 
-## variable 5: datePostedString
+## Variable 5: datePostedString
 
-The variable datePostedString is a nominal variable that represents the date when the house was published. From the instructions of this practice, we can see that we need to retain the observations that were posted on **2021 only**.
+The variable *datePostedString* is a nominal variable that represents the date when the house was published. According to the instructions of this practice, we only need to retain the observations that were posted on **2021 only**, so we remove the rest of the rows and finally we remove the column
 
 ```{r}
 df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
 df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
-size_out_of_year <- which(df$datePostedString != 2021); length(size_out_of_year)
+size_out_of_year <- which(df$datePostedString != 2021); 
+length(size_out_of_year)
 df <- df[df$datePostedString == 2021,]
+
+df <- subset(df, select = -datePostedString)
 ```
 
-**REVISAR** AQUEST FRAGMENT DE CODI, PER A QUÈ ÉS??
+# Variable 6: is_bankOwned.
+
+This variable indicates whether the property belongs to the bank or not. Since it is a binary variable, we consider it more appropriate to treat it as a categorical (qualitative) variable, distinguishing two categories: Yes and No, depending on whether the property is bank-owned or not.
+
+For this reason, we analyzed this variable to identify which values correspond to bank-owned properties and which do not, confirming that there are only two possible values:
+- 0 -> Not owned by the bank
+- 1 -> Owned by the bank
 
 ```{r}
-str(df)
+summary(df$is_bankOwned)
+table(df$is_bankOwned) # This shows that there are only two values
 
-df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
-df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
-length(df[which(df$datePostedString == 2021),]$datePostedString)
-df$stateId <- as.factor(df$stateId)
-which(df$stateId == '16')
-
-# Donat que algunes de les columnes tenen els mateixos valors, les eliminarem perquè no ens proporcionene en informació rellevant.
-df <- df[-c('hasBadGeocode', '')]
-df 
-View(df)
-which(df$currency != 'USD')
+df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES")) # LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE.
+barplot(table(df$is_bankOwned), xlab="Is Bank Owned?")
 
 ```
-
-
-# variable 6 IS_BANK_OWNED.
-
-This variable indicates whether the property belongs to the bank or not. Therefore, it provides information about the bank ownership of the property.
-Since it is a binary variable, we consider it more appropriate to treat it as a categorical (qualitative) variable, distinguishing two categories: Yes and No, depending on whether the property is bank-owned or not.
-
-For this reason, we analyzed this variable to identify which values correspond to bank-owned properties and which do not, confirming that there are only two possible values (0 and 1). Finally, we transformed the variable into a categorical variable with these two levels.
+After transforming it into a factor, we can see easily in the barplot that only 1 observation out of the 6121 original rows has a different value (1) while the others have the same (0). Therefore, this observation does not affect significantly to the variability of the variable, so it can be safely removed. After removing this observation, the column ceases to be a variable since all rows now have the same value, which allows us to safely delete the variable from our data frame. 
 
 ```{r}
-str(df$is_bankOwned)
-which(df$is_bankOwned > 1 | df$is_bankOwned < 0) 
-
-# SO THAT MEANS, AS WE CAN SEE IN THE PREVIEW, THAT THIS VARIABLE IS NUMERIC BUT CAN BE                                     CONSIDERED AS CATEGORICAL, AND WE THINK THAT IS THE BEST OPTION, TO CONSIDER AS A                                         CATEGORICAL VARIABLE.
-
-which(df$is_bankOwned == 1)
-which(df$is_bankOwned != 0)
-boxplot(df$is_bankOwned)
-
-"LET'S TRANSFORM THAT VARIABLE TO A CATEOGIRCAL / FACTOR VARIABLE."
-
-df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES"))
-
+df <- subset(df, select = -is_bankOwned)
 ```
 
 
-# variable 7 IS_FOR_AUCTION
+# Variable 7: is_forAuction
 
 This variable indicates whether a given house is being auctioned or not. In this case, the treatment applied is very similar to the one used previously: we checked for variability between the values 0 and 1, in order to confirm that there are houses that are auctioned and others that are not.
-Once this variability was confirmed, we proceeded to transform the variable into a categorical one, assigning two levels: Yes and No, depending on whether the house belongs to an auction or not.
+
+Once this variability was confirmed, we proceeded to transform the variable into a categorical one, assigning two levels: Yes and No, depending on whether the house belongs to an auction or not. As before, there is only one observation with a different value than the rest, so it is reasonable to remove this observation from the dataset in order to be able to remove the column (*is_forAuction* variable).
 
 ```{r}
-str(df$is_forAuction)
+summary(df$is_forAuction)
+table(df$is_forAuction)
 
-which(df$is_forAuction < 0 | df$is_forAuction > 1)
-which(df$is_forAuction != 0)
-boxplot(df$is_forAuction)
-"WE HAVE THE SAME CASE AS BEFORE, SO LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE. "
+# WE HAVE THE SAME CASE AS BEFORE, SO LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE.
 
 df$is_forAuction <- factor(df$is_forAuction, labels = c("NO", "YES"))
+barplot(table(df$is_forAuction), xlab="Is for auction?")
+df <- subset(df, select = -is_forAuction)
 ```
 
-**REVISAR** EN AMBDOS CASSOS, VARIABLE 6 I 7, TENIM UN UNIC VALOR DIFERENT A LA RESTA, COM HO TRACTARIEM EN AQUEST CAS? 
-JO PER MI HO DEIXEM, PERÒ AL SER NOMÉS UN, NO SEMBLA SOSPITOS, JUST NOMÉS UN ÚNIC CAS EN CADA UN ? 
 
-# variable 8 event
 
-This variable indicates the condition of the house. It is relevant information, as it allows us to know the current state of the property at any time. Therefore, we consider it important to keep this variable for further analyses.
+# Variable 8: Event
 
-In addition, one of the tasks performed was to convert this variable from type char to type factor, in order to analyze in future studies whether the condition of the house has any impact or relationship with its price.
+*Event* is a qualitative variable that indicates the condition of the house. It is relevant information, as it allows us to know the current state of the property at any time. So, we consider it important to keep this variable for further analyses.
+
+The first task to be performed is to convert this variable from type *char* to type *factor*, in order to analyze in future studies whether the condition of the house has any impact or relationship with its price. We also look for missing values, but there are none.
 
 ```{r}
 str(df$event)
@@ -152,23 +157,31 @@ sum(is.na(df$event))
 # WE DON'T HAVE MISSING VALUES, SO THAT'S PERFECT ALSO. 
 # MAYBE IT'S INTERESTING TO CONVERT TO FACTOR
 df$event <- as.factor(df$event)
+barplot(table(df$event))
+```
+It can be noticed that categories "Listing for removed", "Pending sale" and "Sold" account for 1.8% of the observations approximately (111/6121), so we decided to join them into a new category named "Other".
+
+```{r}
+df$event[which(df$event == "Listing removed")] = 'Other'
+df$event[which(df$event == 'Pending sale')] <- 'Other'
+df$event[which(df$event == "Sold")] <- "Other"
+df$event <- as.factor(df$event)
+prop.table(table(df$event))
+barplot(table(df$event))
 ```
 
 
-# variable 9 TIME
+# variable 9: Time
 
-IN THAT CASE, THE TIME FOR THE TARGET VARIABLE THAT IS PRICE, DOESN'T CONTRIBUTE, SO WE CAN EREASE IT. 
-
-We have no specific interest in knowing the exact moment when the listing was published or when the house was for sale. We consider that this information is not essential for studying the property price.
-Therefore, it is not necessary to keep the temporal variable related to the listing or sale time of the house. 
+The variable *time* is a numeric variable that represents the time collected. We have no specific interest in knowing the exact moment when the listing was published or when the house was for sale and we consider that this information is not essential for studying the property price. In consequence, it is not necessary to keep it. 
 
 ```{r}
 df <- subset(df, select = -time)
 ```
 
-# variable 10 PRICE
+# Variable 10: Price
 
-Price is the target variable, so it is critical. First, we will assess its data quality: ensure there are no missing values and that the records are consistent. Next, we will evaluate whether the price distribution is approximately normal and examine the presence of outliers.
+*Price* is the target variable, so it is critical to examine it carefully. First, we will assess its data quality: ensure there are no missing values and that the records are consistent. Next, we will evaluate whether the price distribution is approximately normal and examine the presence of outliers.
 
 Because price is the dependent variable in our study, we will conduct a more in-depth analysis: describe its distribution, identify and justify outliers, and discuss which features (e.g., property condition, area, location, auction status, etc.) may explain these extreme values.
 
@@ -572,6 +585,25 @@ Per aquest motiu una de les coses més importants que hem de fer es corregir aqu
 En aquest cas el que farem és ús d'una funció molt important que ja hem trebalalt amb ella varies vegades, de la llibreria de FactoMineR , que es la de mice, que ens permetra fer imputació de missing values, per assegurar que treballem amb dades de bona qualitat i que per tant, no hi han missing values. 
 
 
+# SECCIO DE DUBTES PER RESOLDRE
 
+**REVISAR** AQUEST FRAGMENT DE CODI, PER A QUÈ ÉS??
+```{r}
+str(df)
 
+df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
+df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
+length(df[which(df$datePostedString == 2021),]$datePostedString)
+df$stateId <- as.factor(df$stateId)
+which(df$stateId == '16')
+
+# Donat que algunes de les columnes tenen els mateixos valors, les eliminarem perquè no ens proporcionene en informació rellevant.
+df <- df[-c('hasBadGeocode', '')]
+df 
+View(df)
+which(df$currency != 'USD')
+
+```
+
+**REVISAR** ESTE FRAGMENTO DE CODIGO ESTABA EN LA VARIABLE IS_BANKEDOWNED
 
