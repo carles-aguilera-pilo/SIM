@@ -5,6 +5,8 @@ date: "2025-10-08"
 output:
   word_document: default
   html_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +17,8 @@ rm(list=ls())
 ```{r}
 df <- read.csv("RealEstate_Georgia.csv")
 View(df)
+
+df_old <- df
 ```
 
 
@@ -33,7 +37,7 @@ df <- subset(df, select = -stateId)
 
 ## Variable 2: countyId
 
-The variable *countyId* is a nominal variable with numeric values that are used to identify the county where a house is. Also, there is another nominal variable named *county* whose values are the names of the counties. When comparing these two columns an inconsistency can be noticed: We would expect rows that share the same *county* value to also share the same *countyId*, as the latter is the numerical representation of the former. However that is not the case, as the vast majority of *countyId* values are unique (only 30 of them are repeated once). As a result, we discard this column as we consider it does not provide useful insights.
+The variable *countyId* is a nominal variable with numeric values that are used to identify the county where a house is. Also, there is another nominal variable named *county* whose values are the names of the counties. When comparing these two columns an inconsistency can be noticed: We would expect rows that share the same *county* value to also share the same *countyId*, as the latter is the numerical representation of the former. However that is not the case, as the vast majority of *countyId* values are unique (only 30 of them are repeated once). As a result, we discard this column as we consider it does not provide any useful insight that is not provided by the *county* column.
 
 ```{r}
 table(df$countyId)
@@ -47,10 +51,7 @@ df <- subset(df, select = -countyId)
 
 The variable *cityId* is a nominal variable with numeric values. Similarly to *countyId* and *county*, there also exists a variable named *city* with the names of cities. We would assume that all rows with the same *city* value would be mapped to the same unique *cityId*, but that is not the case. As an example, there exist two rows who share a *cityId* of 17797 but belong to Atlanta and Doraville. Also, there exist two rows with *city* Dunwoody but with *cityId* 49352 and 42728.
 
-Due to this inconsistency, we consider we have to choose between one of the two columns. We have decided to keep *city* and discard *cityId* as we think that *city* provides more useful information about houses' locations.
-
 ```{r}
-
 # Here we check that, for example, Dunwoody is associated with multiple cityIds (instead of a unique cityId)
 rows <- which(df$city == 'Dunwoody')
 first_cityId <- df[rows[1],]$cityId
@@ -73,7 +74,11 @@ for (r in rows[2:length(rows)]) {
 
 count1 
 count2
+```
 
+Due to this inconsistency, we consider we have to choose between one of the two columns. We have decided to keep *city* and discard *cityId* as we think that *city* provides more useful information about houses' locations.
+
+```{r}
 df <- subset(df, select = -cityId)
 ```
 
@@ -114,20 +119,21 @@ table(df$is_bankOwned) # This shows that there are only two values
 
 df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES")) # LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE.
 barplot(table(df$is_bankOwned), xlab="Is Bank Owned?")
-
+which(df$is_bankOwned == "YES")
 ```
-After transforming it into a factor, we can see easily in the barplot that only 1 observation out of the 6121 original rows has a different value (1) while the others have the same (0). Therefore, this observation does not affect significantly to the variability of the variable, so it can be safely removed. After removing this observation, the column ceases to be a variable since all rows now have the same value, which allows us to safely delete the variable from our data frame. 
+After transforming it into a factor, we can see easily in the barplot that only 1 observation out of the 6121 original rows has a different value (1) while the others have the same (0). Therefore, this observation does not affect significantly to the variability of the variable so it can be safely removed. 
+
+Here we have to decide whether we declare the value for this observation as an error and impute it as a "NO" (preserving the rest of values of the observation) or we remove the observation entirely. For now, we will keep it. In both cases, the column *is_bankOwned* ceases to be a variable since all rows now have the same value, which allows us to safely delete the variable from our data frame. 
 
 ```{r}
 df <- subset(df, select = -is_bankOwned)
 ```
 
-
 # Variable 7: is_forAuction
 
 This variable indicates whether a given house is being auctioned or not. In this case, the treatment applied is very similar to the one used previously: we checked for variability between the values 0 and 1, in order to confirm that there are houses that are auctioned and others that are not.
 
-Once this variability was confirmed, we proceeded to transform the variable into a categorical one, assigning two levels: Yes and No, depending on whether the house belongs to an auction or not. As before, there is only one observation with a different value than the rest, so it is reasonable to remove this observation from the dataset in order to be able to remove the column (*is_forAuction* variable).
+Once this variability was confirmed, we proceeded to transform the variable into a categorical one, assigning two levels: Yes and No, depending on whether the house belongs to an auction or not. As before, there is only one observation with a different value than the rest, so it is reasonable to remove this observation from the dataset or impute its value in order to be able to remove the column (*is_forAuction* variable). Since the row (3919) is different from the previous one (156), we keep it for now and only impute its value.
 
 ```{r}
 summary(df$is_forAuction)
@@ -137,6 +143,7 @@ table(df$is_forAuction)
 
 df$is_forAuction <- factor(df$is_forAuction, labels = c("NO", "YES"))
 barplot(table(df$is_forAuction), xlab="Is for auction?")
+which(df$is_forAuction == "YES")
 df <- subset(df, select = -is_forAuction)
 ```
 
@@ -155,14 +162,13 @@ table(df$event)
 sum(is.na(df$event))
 
 # WE DON'T HAVE MISSING VALUES, SO THAT'S PERFECT ALSO. 
-# MAYBE IT'S INTERESTING TO CONVERT TO FACTOR
-df$event <- as.factor(df$event)
+#df$event <- as.factor(df$event)
 barplot(table(df$event))
 ```
 It can be noticed that categories "Listing for removed", "Pending sale" and "Sold" account for 1.8% of the observations approximately (111/6121), so we decided to join them into a new category named "Other".
 
 ```{r}
-df$event[which(df$event == "Listing removed")] = 'Other'
+df$event[which(df$event == "Listing removed")] <- 'Other'
 df$event[which(df$event == 'Pending sale')] <- 'Other'
 df$event[which(df$event == "Sold")] <- "Other"
 df$event <- as.factor(df$event)
@@ -188,11 +194,19 @@ Because price is the dependent variable in our study, we will conduct a more in-
 ```{r}
 str(df$price)
 sum(is.na(df$price))
+# It's a numerical variable and does not have any missing values
 
-"ES UNA VARIABLE NUMERICA, COM ERA D'ESPERAR I NO TE MISSING VALUES, PER TANT, DE MOMENT SEMBLA QUE LA VARIABLE ESTÀ BÉ."
 
-"LET'S SEE IF THERE IS A OUTLAYER IN THAT VARIABLE"
+# Check for normality. Plots show price does not follow a normal distribution
+par(mfrow=c(1,2))
+hist(df$price)
+qqnorm(df$price) # Since our number of observations is too high, we will check for normality visually with a qqplot
+qqline(df$price)
+par(mfrow=c(1,1))
+
+# Check for univariate outliers
 boxplot(df$price)
+
 # YES, WE HAVE SOME OUTLAYERS, SO LET'S CHECK, WHICH ONE'S ARE MILD OR SEVERE OUTLAYERS.
 
 sum_sq <- summary(df$price)
@@ -606,4 +620,6 @@ which(df$currency != 'USD')
 ```
 
 **REVISAR** ESTE FRAGMENTO DE CODIGO ESTABA EN LA VARIABLE IS_BANKEDOWNED
+
+**REVISAR**: Borramos la row entera, o solo imputamos su valor? debemos ver si el individuo solo presenta ese error, o tambien tiene otras variables distintas.
 
