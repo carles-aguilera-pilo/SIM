@@ -19,6 +19,7 @@ df <- read.csv("RealEstate_Georgia.csv")
 View(df)
 
 df_old <- df
+
 ```
 
 
@@ -41,6 +42,7 @@ The variable *countyId* is a nominal variable with numeric values that are used 
 
 ```{r}
 table(df$countyId)
+prop.table(table(df$countyId))
 length(which(table(df$countyId) > 1)) # Number of values that are repeated at least one time
 length(which(table(df$countyId) > 2)) 
 # IN THAT CASE WE OBSERVE WITH THAT TABLE AND THIS CONDITIONS THAT EACH VALUE APPEARS ONLY ONE TIME, AND SOMETIMES TWO TIMES, BUT NO MORE THAN 2
@@ -53,6 +55,10 @@ The variable *cityId* is a nominal variable with numeric values. Similarly to *c
 
 ```{r}
 # Here we check that, for example, Dunwoody is associated with multiple cityIds (instead of a unique cityId)
+summary(df$city)
+table(df$city)
+prop.table(table(df$city))
+
 rows <- which(df$city == 'Dunwoody')
 first_cityId <- df[rows[1],]$cityId
 count1 <- 0
@@ -119,8 +125,9 @@ table(df$is_bankOwned) # This shows that there are only two values
 
 df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES")) # LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE.
 barplot(table(df$is_bankOwned), xlab="Is Bank Owned?")
-which(df$is_bankOwned == "YES")
+table(df$is_bankOwned)
 ```
+
 After transforming it into a factor, we can see easily in the barplot that only 1 observation out of the 6121 original rows has a different value (1) while the others have the same (0). Therefore, this observation does not affect significantly to the variability of the variable so it can be safely removed. 
 
 Here we have to decide whether we declare the value for this observation as an error and impute it as a "NO" (preserving the rest of values of the observation) or we remove the observation entirely. For now, we will keep it. In both cases, the column *is_bankOwned* ceases to be a variable since all rows now have the same value, which allows us to safely delete the variable from our data frame. 
@@ -143,11 +150,13 @@ table(df$is_forAuction)
 
 df$is_forAuction <- factor(df$is_forAuction, labels = c("NO", "YES"))
 barplot(table(df$is_forAuction), xlab="Is for auction?")
-which(df$is_forAuction == "YES")
+table(df$is_forAuction)
+
+
+
+# LOOK AFTER, WE CAN NOT REMOVE NOW THAT VARIABLE.
 df <- subset(df, select = -is_forAuction)
 ```
-
-
 
 # Variable 8: Event
 
@@ -160,11 +169,11 @@ str(df$event)
 table(df$event)
 # MAYBE THAT VARIABLE IS INTERESTING FOR FURTHER ANALYSIS IN DATA, LET'S TAKE AND WE'LL NOT ERASE IT.
 sum(is.na(df$event))
-
 # WE DON'T HAVE MISSING VALUES, SO THAT'S PERFECT ALSO. 
 #df$event <- as.factor(df$event)
 barplot(table(df$event))
 ```
+
 It can be noticed that categories "Listing for removed", "Pending sale" and "Sold" account for 1.8% of the observations approximately (111/6121), so we decided to join them into a new category named "Other".
 
 ```{r}
@@ -172,8 +181,10 @@ df$event[which(df$event == "Listing removed")] <- 'Other'
 df$event[which(df$event == 'Pending sale')] <- 'Other'
 df$event[which(df$event == "Sold")] <- "Other"
 df$event <- as.factor(df$event)
+table(df$event)
 prop.table(table(df$event))
 barplot(table(df$event))
+pie(table(df$event))
 ```
 
 
@@ -199,50 +210,46 @@ sum(is.na(df$price))
 
 # Check for normality. Plots show price does not follow a normal distribution
 par(mfrow=c(1,2))
-hist(df$price)
+hist(df$price, freq = FALSE)
+curve(dnorm(x,mean=mean(df$price), sd= sd(df$price)), lwd = 2, col ='red', add = TRUE)
 qqnorm(df$price) # Since our number of observations is too high, we will check for normality visually with a qqplot
 qqline(df$price)
 par(mfrow=c(1,1))
+
+# HERE WE CAN OBSERVE THAT THE TARGET VARIABLE PRICE IS NOT FOLLOWING A NORMAL DISTRIBUTION, SO LET'S CHECK IF WE APPLY SOME TRANSOFMRATIONS IF IT FOLLOWS A NORMAL DISTRIBUTUION OR NOT. 
+par(mfrow = c(1,2))
+hist(log(df$price), freq = FALSE)
+curve(dnorm(x,mean=mean(log(df$price)), sd= sd(log(df$price))), lwd = 2, col ='red', add = TRUE)
+qqnorm(log(df$price)) # Since our number of observations is too high, we will check for normality visually with a qqplot
+qqline(log(df$price))
+
+#We observe that this follows a little bit more the normality, but still also some values that are far from the perfect line, so let's check with the shapiro.test the normality.
+
+sample <- df[1:5000,]
+shapiro.test(log(sample$price))
+# HERE WITH A SAMPLE, WE CAN SE THAT THE P-VALUE IS LESS THAN THE 0.05, SO THAT MEANS THAT THE PRICE IS NOT FOLLOWING A NORMAL DISTRIBUTION.
 
 # Check for univariate outliers
 boxplot(df$price)
 
 # YES, WE HAVE SOME OUTLAYERS, SO LET'S CHECK, WHICH ONE'S ARE MILD OR SEVERE OUTLAYERS.
-
-sum_sq <- summary(df$price)
+sum_sq <- summary(df$price); sum_sq
 iqr <- sum_sq[5] - sum_sq[2]
 llmild <- which(df$price < sum_sq[2] - 1.5*iqr | df$price > sum_sq[5] + 1.5*iqr) 
 llsev <- which(df$price < sum_sq[2] - 3*iqr | df$price > sum_sq[5] + 3*iqr) 
 length(llmild); length(llsev)
 
-# SO IN THAT CASE WE HAVE TWO OUTLAYERS, LET'S SEE THAT OUTLAYERS
-
+# WE HAVE. A TOTAL OF 40 SEVERE OUTLAYERS AND 239 MILD OUTLAYERS. LET'S SEE IN THE BOXPLOT.
 boxplot(df$price)
 abline(h = sum_sq[2] - 1.5*iqr, col='green')
 abline(h = sum_sq[5] + 1.5*iqr, col='green')
 abline(h = sum_sq[2] - 3*iqr, col='red')
 abline(h = sum_sq[5] + 3*iqr, col='red')
 
-"PER TANT TENIM OUTLAYERS, LET'S CHECK ALL OF THESE OUTLAYERS"
+# WHO ARE THE ONE'S THAT ARE OUTLAIERS IN THE PRICE, LET'S SEE. 
 
-df_copy <- df
-df_copy$isout <- 0
-df_copy$isout[c(llmild, llsev)] <- 1
-
-df_copy$isout <- factor(df_copy$isout, labels = c("NO", "YES"))
-
-str(df_copy)
-
-var_col <- c(4:8,10,12,14,22,24,25,27,31,32,33,36,37); var_col
-df_cat_res <- df_copy[,var_col]; df_cat_res
-
-res.ct <- catdes(df_cat_res,
-                 num.var = 17)
-
-res.ct$quanti.var
-res.ct$category
-res.ct$quanti
-
+df[llsev,] # THE ONE'S THAT THE HOME PRICE IS ABOVE THE 1.249.000 €.
+sort(df$price[llsev])
 ```
 
 SO IN THAT CASE, WE CAN OBSERVE THAT THE ONE'S THAT ARE OUTLAYERS IN THE PRICE VARIABLE ARE THOSE ONE'S THAT LIVE IN A CITY WHERE THE HOUSES ARE MORE EXPENSIVE THAN THE OTHERS ONE. 
@@ -251,8 +258,9 @@ ALSO WE CAN OBSERVE THAT THE THE ONE'S THAT ARE OUTLAYERS ARE THOSE ONE'S THAT T
 
 #variable 11 price_per_square_foot
 
-THAT VALUE IT'S INTERESTING BECAUSE IN FURTHER ANALYSIS, MAYBE WE HAVE A HUGE INTEREST TO KNOW
-ABOUT HOW MUCH IT COSTS THE SQUARE_FOOT PER ZONE O PER COUNTRY, SO IN THAT CASE, WE THINK IT SHOULD BE IMPORTANT TO HAVE THAT VARIABLE FOR FUTURE ANALYSIS.
+This variable is interesting because, in future analyses, it could be very useful to know how much the price per square foot varies depending on the area or country. In this sense, it might be relevant to keep this variable for potential later studies.
+
+However, from another point of view, if we already have the target variable price and also square_foot, the variable price_per_square_foot is simply a linear combination of these two, since it can easily be obtained by dividing the price by the number of square feet. Therefore, in this specific context, it does not provide new information or add significant value. Nevertheless, it could still be of interest for other types of analyses.
 
 ```{r}
 sum_sq <- summary(df$pricePerSquareFoot)
@@ -272,34 +280,43 @@ abline(h = sum_sq[5] + 1.5*iqr, col='green')
 abline(h=sum_sq[2] - 3*iqr, col='red')
 abline(h=sum_sq[5] - 3*iqr, col='red')
 
+sort(df$pricePerSquareFoot[llsev])
+
+which(df$pricePerSquareFoot == 205000) # THE OBSERVATION 1273
+df$price[1273]
+df$livingArea[1273] # 1 m^2 for living....not logic.
+
 # WE HAVE THIS TWO OUTLAYERS, SO LET'S SEE WHAT WE CAN DO WITH THESE OUTLAYERS.
 # THOSE OUTLAYERS CORRESPON TO THAT ONE'S THAT ARE EXPENSIVE.
 
+"Considering what we have mentioned before, we can remove this variable. Since we already have price and living area (which represents the square footage of the house), this value can be easily computed from those two variables."
+df <- subset(df, select = -pricePerSquareFoot)
 ```
-
-
 
 #variable 12 CITY.
 
-WE THINK THAT CITY IS A IMPORTANT VARIABLE, BECAUSE, DEPENDING OF THE CITY, YOU CON MAKE SOME DEEP ANALYSIS AND UNDERSTAND AND FIND WHICH CITY OR ZONES ARE THE NOST EXPENSIVE OR CHEAPEST ONE'S, SO IN THAT CASE IT'S IMPORTANT TO MANTAIN THAT VRIABLE FOR FURTHER ANALYSIS. 
+We believe that City is an important variable because it allows for deeper analysis based on location. By considering the city, we can identify and compare which areas or regions tend to have higher or lower property prices. This information can provide valuable insights into geographic price patterns and local market dynamics. Therefore, it is important to keep this variable for future analysis.
 
 ```{r}
 table(df$city)
 prop.table(table(df$city))
+sort(table(df$city))
 sum(is.na(df$city)) # we don't have any missing values.
+
+str(df$city)
+df$city <- as.factor(df$city)
+df$city
+barplot(table(df$city))
 ```
-
-
 
 #variable 13 state
 
-IN THAT CASE WE HAVE THAT ALL OF THESE HOUSES ARE IN THE SAME STATE, SO THAT VARIABLE DOESN'T MAKE SENSE, IT DOESN'T GIVE ADDITIONAL INFORMATION AND IT'S REDUNDANT SO WE CAN ERASE IT FROM OUR DATASET. 
+In this case, all the properties in the dataset belong to the same state. Therefore, this variable does not provide any additional or differentiating information. Since it has no variability and is redundant, it can be safely removed from the dataset.
 
 ```{r}
 which(df$state != "GA")
 df <- subset(df, select = -state)
 ```
-
 
 
 # variable 14 year_built
@@ -311,27 +328,45 @@ MAYBE, IN THE FUTURE, THE YEAR OF THE HOUSE IT'S SO IMPORTANT, SO THAT WILL MAKE
 summary(df$yearBuilt)
 boxplot(df$yearBuilt)
 
-# we have also outlayers, so let's check carefully to see why these outlayers. 
+# we have also outlayers, so let's check carefully to see why these outlayers.
 
+# DETECT THE OUTLAYERS
+
+var_year <- summary(df$yearBuilt); var_year
+iqr <- var_year[5] - var_year[2]; iqr
+
+llmild <- which(df$yearBuilt < var_year[2] - 1.5*iqr | df$yearBuilt > var_year[5] + 1.5*iqr); llmild 
+llsev <- which(df$yearBuilt < var_year[2] - 3*iqr | df$yearBuilt > var_year[5] + 3*iqr); llsev
+
+boxplot(df$yearBuilt)
+abline(v = var_year[2] - 1.5*iqr , col = 'green')
+abline(v = var_year[5] + 1.5*iqr, col = 'green')
+abline(v = var_year[2] - 3*iqr, col = 'red')
+abline(v = var_year[5] + 3*iqr, col = 'red')
+
+sort(df$yearBuilt[llsev])
+# WE CAN SEE THAT THE ONE'S THAT ARE SEVERAL OUTLAYERS ARE THOSE ONE'S THAT ARE FROM 1800 - 1840, SO OLD HOUSES, AND ALSO A HOUSE THAT IS FOR THE YEAR 9999. MAYBE WE CAN REMOVE THAT VALUE BECAUSE MAKE NO SENSE HAVING A HOUSE OF THE YEAR 9999. MAYBE IS A WRONG VALUE. 
+
+df$price[which(df$yearBuilt == 9999)] # THE PRICE FOR THIS HOME IS 285.750 €. Let's remain this value, and then in the further analysisi maybe we need to delete one.
 
 ```
 
 
-
 # variable 15 STREET ADRESS. 
 
-IN THAT CASE WE THINK THE STREET IT'S NOT IMPORTANT, THE STREET WILL NOT DETERMINE THE PRICE, WHAT'S REALLY IMPORTANT IS TO KNOWE THE CITY AN THE ZONE, BUT THE STREET DOESN'T MAKE ANY CONTRIBUTION FOR PREDICTING THE PRICE. 
+In this case, we consider the street address variable to be unimportant for our analysis. The specific street is not a determining factor in property prices; what truly matters are broader location variables such as the city and the zone.
 
-HERE IN PEDRALBES, WE KNOW ALL THE HOUSES AND FLATS ARE VERY EXPENSIVE, BUT THE STREET DOESN'T PLAY ANY ROLE TO INCREMENT THAT PRCIE OR NOT, BUT THE ZONE --> PEDRALBES, YES, SO THAT'S WHY WE DELETE THAT VARIABLE.
+For example, in Pedralbes, we know that all houses and apartments are generally very expensive, but the particular street within this area does not significantly influence the price. What really drives the price is the zone itself, in this case, Pedralbes. Therefore, we decided to remove this variable from the dataset, as it does not provide meaningful information for price prediction.
 
 ```{r}
 df <- subset(df, select = -streetAddress)
 ```
 
-
 # variable 16 / 17 / 18.
 
-IN THAT CASE WHAT HAPPENS IS THE SAME, WE DON'T REALLY WANT TO KNOW THE ZIPCODE OR THE LATITUDE OR LONGITUDE TO PREDICT OR TO KNOW THE PRICE, SO, WE MEAN THAT, THAT VARIABLES DOSEN'T GIVE TO US ANY CONTRIBUTION, WE KNOW FOR THE ZIPCODE THE CITY / COUNTRY, SO THAT'S ENOUGH TO UNDERSTAND IN FUTURE ANALYSIS WHICH CITY WE ARE TALKING ABOUT. ALSO THE LATTITUDE AND LONGITUDE IT'S NOT IMPORTANT, BECAUSE THAT WILL NOT GIVE TO ME MORE INFORMATION ABOUT THE PRICE FOR THE HOUSE, I HAVE THE CITY AND I DON'T WANT THE COORDINATES WHERE THE HOUSE IS. 
+In this case, the reasoning is similar. We do not need the zip code, latitude, or longitude variables to predict or understand property prices. These variables do not provide additional or meaningful information for our analysis.
+
+The zip code already indicates the city or area where the property is located, and that is sufficient for understanding geographic patterns in future analyses. As for latitude and longitude, they are not necessary for our purpose, since we already know the city and zone of each property. The exact geographic coordinates do not add relevant insight into price prediction, so we decided to remove these variables from the dataset.
 
 ```{r}
 df <- subset(df, select= -c(zipcode, latitude, longitude))
@@ -339,8 +374,9 @@ df <- subset(df, select= -c(zipcode, latitude, longitude))
 
 # variable 19. hasbadGeocdoe
 
-IN THAT CASE WE HAVE a column that has a lot of same values, all the same -> 0. 
-SO THAT COLUMN IS NOT GIVING TO US ADDITIONAL INFORMATION, ALL VALUES ARE THE SAME, WE CAN EREASE IT. 
+In this case, we found that this column contains the same value (0) for all observations. Since there is no variability in the data, this variable does not provide any meaningful or distinguishing information for our analysis.
+
+A variable where all entries are identical cannot help in understanding differences between observations or in predicting the target variable. Therefore, we decided to remove this column from the dataset, as it is redundant and has no analytical value.
 
 ```{r}
 which(df$hasBadGeocode != 0)
@@ -349,25 +385,76 @@ df <- subset(df, select = -hasBadGeocode)
 
 # variable 20. Currency
 
+In this case, we found that this column contains the same value (USD) for all observations. Since there is no variability in the data, this variable does not provide any meaningful or distinguishing information for our analysis.
 
-# variable 21. 
+A variable where all entries are identical cannot help in understanding differences between observations or in predicting the target variable. Therefore, we decided to remove this column from the dataset, as it is redundant and has no analytical value.
 
-WE HAVE HERE ALSO THE SAME AS SOME VARIABLES IN THAT DATASET, WE HAVE A VARIABLE THAT IS NOT GIVING TO US ADDITIONAL INFORMATION, SO WHAT WE HAVE TO DO IS TO ERASE IT, BECAUSE I NOT GIVING MORE ADDITIONAL INFORMATION
 
 ```{r}
-which(df$currency != 'USD')
+table(df$currency)
+prop.table(table(df$currency))
 df <- subset(df, select = -currency)
 ```
 
+# variable 21 Description
+
+The description variable is not particularly relevant for our predictive analysis. Ultimately, we are interested in the objective features of the property, not its textual description. Therefore, we decided to remove this variable, as it does not provide any meaningful or useful information for our analysis.
+
+```{r}
+df<- subset(df, select =-description)
+```
+
+
 #variable 22 / 23 / 26 LIVING AREA & LIVING AREA VALUE & building area.
-
-
 
 IN THAT CASE WE HAVE THREE VARIABLES THAT REPRESENTS THE SAME, SO HAVING BOTH OF THEM IS REDUNDANT SO IN THAT CASE WE WILL CHOOSE THE SECOND ONE, LIVING AREA VALUE.
 
 ```{r}
-df <- subset(df, select = -livingArea)
+val <- c(0, 0)
+
+for (i in 1:nrow(df)) {
+  row <- df[i, c("livingArea", "livingAreaValue", "buildingArea")]
+  if (length(unique(row)) == 1) {
+    val[0] <- val[0] + 1  # número de filas con valores iguales
+  } else {
+    val[1] <- val[1] + 1  # número de filas con valores diferentes
+  }
+}
+val;
+
+# HERE WE CAN SEE THAT ALL THE VALUES ARE THE SAME IN EACH CATEGORY, SO ALL THE OBSERVATION IN THOSE 3 VARIABLES HAVE THE SAME VALUE, WE WILL STAY ONLY WITH ONE, livingArea. 
+df <- subset(df, select = -livingAreaValue)
 df <- subset(df, select = -buildingArea)
+
+# ANALYZE THE LIVING AREA.
+summary(df$livingArea)
+boxplot(df$livingArea)
+# OUTLAYERS.
+
+var_liv <- summary(df$livingArea); var_liv
+iqr <- var_liv[5] - var_liv[2]; iqr
+
+llmild <- which(df$livingArea < var_liv[2] - 1.5*iqr | df$livingArea > var_liv[5] + 1.5*iqr); llmild
+llsev <- which(df$livingArea < var_liv[2] - 3*iqr | df$livingArea > var_liv[5] + 3*iqr); llsev
+
+boxplot(df$livingArea)
+abline(h = var_liv[2] - 1.5*iqr,col = 'green')
+abline(h = var_liv[5] + 1.5*iqr,col = 'green')
+abline(h = var_liv[2] - 3*iqr, col = 'red')
+abline(h = var_liv[5] + 3*iqr, col = 'red')
+
+df[llsev,]
+
+# ALSO LET'S SEE THE DISTRIBUTION OF THAT NUMERIC VARIABLE. 
+
+hist(df$livingArea, freq = FALSE)
+curve(dnorm(x,mean=mean(df$livingArea), sd= sd(df$livingArea)), lwd = 2, col = 'red', add = T)
+
+# Applying logarithm
+
+hist(log(df$livingArea), freq = FALSE)
+curve(dnorm(x,mean=mean(log(df$livingArea)), sd= sd(log(df$livingArea))), lwd = 2, col = 'red', add = T)
+
 ```
 
 
@@ -387,10 +474,17 @@ boxplot(df$bathrooms)
 abline(h= var_out[2] - 1.5*iqr, col= 'green')
 abline(h= var_out[5] + 1.5*iqr, col= 'green')
 abline(h= var_out[2] - 3*iqr, col= 'red')
-abline(h= var_out[2] + 3*iqr, col='red')
+abline(h= var_out[5] + 3*iqr, col='red')
 
 # tenim un total de 
 length(llm) + length(lls) # -> 554 outlaiers. 520 mild i 34 de extreme. 
+
+# Let's see the distribution of that variable
+
+hist(df$bathrooms, freq = FALSE)
+curve(dnorm(x, mean=mean(df$bathrooms), sd=sd(df$bathrooms)), lwd = 2, col = 'red', add = T)
+
+
 ```
 
 
@@ -405,14 +499,27 @@ iqr <- var_out[5] - var_out[2]
 llm <- which(df$bedrooms < var_out[2] - 1.5*iqr | df$bedrooms > var_out[5] + 1.5*iqr); length(llm)
 lls <- which(df$bedrooms < var_out[2] - 3*iqr | df$bedrooms > var_out[5] + 3*iqr); length(lls)
 
-boxplot(df$bedrooms)
-abline(h= var_out[2] - 1.5*iqr, col= 'green')
-abline(h= var_out[5] + 1.5*iqr, col= 'green')
-abline(h= var_out[2] - 3*iqr, col= 'red')
-abline(h= var_out[2] + 3*iqr, col='red')
+boxplot(df$bedrooms, horizontal = TRUE)
+abline(v= var_out[2] - 1.5*iqr, col= 'green')
+abline(v= var_out[5] + 1.5*iqr, col= 'green')
+abline(v= var_out[2] - 3*iqr, col= 'red')
+abline(v= var_out[5] + 3*iqr, col='red')
+
 
 # tenim un total de 
 length(llm) + length(lls) # $413 outlayers. 
+
+# let's see the one's that are outlayers, why they are
+
+df[lls,]
+table(df$homeType[lls]) # MOst of them are from single family.
+
+# NOW LET'S SEE THE DISTRIBUTION:
+
+hist(df$bedrooms, freq = FALSE)
+curve(dnorm(x,mean=mean(mean(df$bedrooms)), sd= sd(df$bedrooms)), lwd = 2, col = 'red', add = T)
+
+# SEEMS TO BE SO NORMALLY DISTRIBUITED.
 ```
 
 
@@ -430,8 +537,6 @@ IN ALL THIS 3 VARIABLES WE HAVE INCONSITENCY, SO WHICH ONE WE'LL CHOOSE ??
 ```
 
 
-
-
 # variable 30 LEVELS
 
 THAT VARIABLE IS IMPORTANT, BECAUSE CAN GIVE TO US INFORMATION ABOUT WHICH LEVEL HAS EACH HOME.
@@ -439,6 +544,9 @@ THAT VARIABLE IS IMPORTANT, BECAUSE CAN GIVE TO US INFORMATION ABOUT WHICH LEVEL
 ```{r}
 table(df$levels)
 prop.table(table(df$levels))
+barplot(table(df$levels))
+pie(table(df$levels))
+
 sum(is.na(df$levels)) # WE DON'T HAVE ANY OUTLIER IN THAT CASE.
 ```
 
