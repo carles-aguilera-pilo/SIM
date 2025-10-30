@@ -1,6 +1,6 @@
 ---
-title: "PROJECTE"
-author: "Carles Aguilera"
+title: "DELIVERABLE 1"
+author: "Carles Aguilera , Joel Delgado, Oriol Vilella"
 date: "2025-10-08"
 output:
   word_document: default
@@ -17,13 +17,11 @@ rm(list=ls())
 ```{r}
 df <- read.csv("RealEstate_Georgia.csv")
 View(df)
-
 df_old <- df
-
 ```
 
 
-# Data  preparation
+# DATA PREPARATION
 
 The first step of a data science project involves cleaning the raw data set. In this section we address how to deal with missing values, correcting inconsistencies and transforming the data into a format suitable for algorithms. Therefore, in this section, we will study each variable in order to clean as much as possible the dataset for the future results to be as accurate as possible.
 
@@ -151,8 +149,6 @@ table(df$is_forAuction)
 df$is_forAuction <- factor(df$is_forAuction, labels = c("NO", "YES"))
 barplot(table(df$is_forAuction), xlab="Is for auction?")
 table(df$is_forAuction)
-
-
 
 # LOOK AFTER, WE CAN NOT REMOVE NOW THAT VARIABLE.
 df <- subset(df, select = -is_forAuction)
@@ -349,6 +345,18 @@ sort(df$yearBuilt[llsev])
 
 df$price[which(df$yearBuilt == 9999)] # THE PRICE FOR THIS HOME IS 285.750 €. Let's remain this value, and then in the further analysisi maybe we need to delete one.
 
+idxx <- which(df$yearBuilt > 2021)
+df$yearBuilt[idxx] <- NA
+
+# NOW WE ARE GOING TO IMPUTE THOSE VALUES FOR THE YEAR BUILT. 
+library(mice)
+res.im <- mice(df[,c(7,9,10,11,12,13,14,15)])
+df_i <- complete(res.im)
+
+summary(df$yearBuilt); summary(df_i$yearBuilt)
+
+df$yearBuilt <- df_i$yearBuilt
+summary(df$yearBuilt)
 ```
 
 
@@ -484,7 +492,19 @@ length(llm) + length(lls) # -> 554 outlaiers. 520 mild i 34 de extreme.
 hist(df$bathrooms, freq = FALSE)
 curve(dnorm(x, mean=mean(df$bathrooms), sd=sd(df$bathrooms)), lwd = 2, col = 'red', add = T)
 
+# FOR THOSE WHO HAS 0 BATHROOMS, LET'S PUT THE NA VALUE AND THEN LET'S IMPUTE THEM. THERE ARE SO FEW WHO HAS NOT BATHROOM.
+indx <- which(df$bathrooms == 0); indx
+df$bathrooms[indx] <- NA
+library(mice)
+res.im <- mice(df[,c(7,9,10,11,12,13,14,15)])
+df_im <- complete(res.im)
 
+summary(df$bathrooms);summary(df_im$bathrooms)
+
+# WE CAN SEE THAT THE DISTRIBUTION REMAIN EQUALLY, SO THAT IMPUTATION IS CORRECT. 
+
+df$bathrooms <- df_im$bathrooms
+summary(df$bathrooms)
 ```
 
 
@@ -534,6 +554,66 @@ IN ALL THIS 3 VARIABLES WE HAVE INCONSITENCY, SO WHICH ONE WE'LL CHOOSE ??
 
 ```{r}
 
+for(i in 1:nrow(df)){
+  parking <- df$parking[i]
+  has_garage <- df$hasGarage[i]
+  garagespaces <- df$garageSpaces[i]
+  
+  if(parking == 0 & has_garage == 0 & garagespaces >0){
+    df$garageSpaces[i] <- 0
+  } else if (parking == 0 & has_garage > 0){
+    if(garagespaces > 0) df$parking[i] <- 1
+    else df$hasGarage[i] <- 0
+  } else if (parking > 0 & has_garage == 0){
+    if(garagespaces > 0) df$hasGarage[i] <- 1
+    else df$parking[i] <- 0
+  } else if(parking > 0 & has_garage > 0 & garagespaces == 0){
+    df$garageSpaces[i] <- NA
+  }
+}
+
+summary(df$parking); summary(df$hasGarage); summary(df$garageSpaces)
+
+# IN CASE WE HAVE NA VALUES DUE TO THE INCONSITECNY OF THAT 3 VARIABLES, LET'S IMPUTE THEM USING MICE.
+
+library(mice)
+res.imp <- mice(df[,c(7,9,10,11,12,13,14,15)])
+df_imp <- complete(res.imp)
+
+quantile(df$parking, na.rm = TRUE)
+quantile(df_imp$parking)
+
+quantile(df$hasGarage, na.rm = TRUE)
+quantile(df_imp$hasGarage)
+
+quantile(df$garageSpaces, na.rm = TRUE)
+quantile(df_imp$g)
+
+summary(df$parking); summary(df_imp$parking)
+summary(df$hasGarage); summary(df_imp$hasGarage)
+summary(df$garageSpaces); summary(df_imp$garageSpaces)
+
+# WE LOOK HERE WITH THAT VALIDATION THAT THE DISTRIBTUION IT REMAINS ALMOST THE SAME
+
+# LET'S SEE THE DISTRIBUTION IN THE GARAGESPACES.
+
+df$garageSpaces <- df_imp$garageSpaces
+
+summary(df$garageSpaces)
+
+hist(df$garageSpaces, freq = FALSE)
+curve(dnorm(x,mean=mean(df$garageSpaces),sd=sd(df$garageSpaces)), lwd = 2, col = 'red',add= T)
+
+# WE LOOK THAT THIS IS NOT FOLLOWING A NORMAL DISTRIBTUION.
+
+hist(log(df$garageSpaces), freq = FALSE)
+
+# APPLYING THE LOGARITMIC TRANSFORMATION NEITHER.
+
+hist(sqrt(df$garageSpaces), freq = FALSE)
+
+# APPLYING THE SQRT TRANSOFMRATION NEITHER.
+
 ```
 
 
@@ -546,8 +626,7 @@ table(df$levels)
 prop.table(table(df$levels))
 barplot(table(df$levels))
 pie(table(df$levels))
-
-sum(is.na(df$levels)) # WE DON'T HAVE ANY OUTLIER IN THAT CASE.
+sum(is.na(df$levels)) # WE DON'T HAVE ANY MISSING IN THAT CASE.
 ```
 
 # VARIABLE 31 POOL
@@ -560,6 +639,11 @@ THE ONLY THINK THAT WE MUST TAKE INTO ACCOUNT IS THAT IS A NUMERIC (INT) VARIABL
 str(df$pool)
 which(df$pool < 0 | df$pool > 1) # we don't have any strange value
 df$pool <- factor(df$pool, labels = c("NO", "YES"))
+
+table(df$pool)
+prop.table(table(df$pool))
+
+barplot(table(df$pool)); pie(table(df$pool))
 ```
 
 
@@ -571,6 +655,10 @@ IN THAT VARIABLE HAPPENS THE SAME AS THE VARIABLE ABOVE, BECAUSE WHAT WE HAVE IS
 str(df$spa)
 which(df$spa < 0 & df$spa > 1)
 df$spa <- factor(df$spa, labels = c("NO", "YES"))
+
+table(df$spa)
+barplot(table(df$spa)); pie(table(df$spa))
+
 ```
 
 
@@ -581,18 +669,27 @@ THE SAME AS VARIABLES ABOVE. THE IMPORTANCE OF THAT VARIABLE MAY COME TO UNDERST
 ```{r}
 str(df$isNewConstruction)
 which(df$isNewConstruction < 0 | df$isNewConstruction > 1)
-df$isNewConstruction <- factor(df$isNewConstruction, c("NO", "YES"))
+df$isNewConstruction <- factor(df$isNewConstruction, labels = c("NO", "YES"))
+
+table(df$isNewConstruction)
+prop.table(table(df$isNewConstruction))
+
+barplot(table(df$isNewConstruction)); pie(table(df$isNewConstruction))
+
 ```
 
 # VARIABLE 34 has pets allowed
-
-THE SAME HAPPENS IN THAT VARIABLE, THE SAME AS ABOVE, IN THAT CASE **REVSAR** NO SE FINS A QUIN PUNT ES PODRIA CONSIDERAR SI ET POT TENIR PETS O NO...AL FINAL COMPRES LA CASA I FAS EL QUE VOLS, NO ? O PODER ES PER SI LA CASA ESTARIA ADAPTADA A ANIMALS DE COMPANYIA ??? **REVISAR**
+The same applies to this variable, just like in the previous case. In this situation, it’s unclear to what extent it could be considered relevant, perhaps it refers to whether pets are allowed or not. However, in the end, when you buy a house, you can do whatever you want with it, right? Or maybe the variable indicates whether the property is adapted or suitable for pets. To be reviewed.
 
 ```{r}
 str(df$hasPetsAllowed)
 which(df$hasPetsAllowed < 0 | df$hasPetsAllowed > 1)
 which(df$hasPetsAllowed != 0)
-df$hasPetsAllowed <- factor(df$hasPetsAllowed, c("NO", "YES"))
+df$hasPetsAllowed <- factor(df$hasPetsAllowed, labels = c("NO", "YES"))
+
+table(df$hasPetsAllowed)
+prop.table(table(df$hasPetsAllowed))
+
 ```
 
 # VARIABLE 35 HOME_TYPE
@@ -606,105 +703,141 @@ df$homeType <- as.factor(as.character(df$homeType))
 
 table(df$homeType)
 prop.table(table(df$homeType))
-"WE have here that the most houses are from the single family --> 88% aprox"
+"WE have here that the most houses are from the single family --> 88% aprox SO WE CAN GROUP THE OTHER ONE'S IN A GROUP THAT CAN BE KNOWN AS OTHER"
+df$homeType <- as.character(df$homeType)
+df$homeType[which(df$homeType != "SINGLE_FAMILY")] <- "Other"
+df$homeType <- as.factor(as.character(df$homeType))
+
+table(df$homeType)
+prop.table(table(df$homeType))
+
+barplot(table(df$homeType)); pie(table(df$homeType))
+
 ```
 # VARIABLE 36 COUNTY
 
-HERE WE HAVE ALSO A VARIABLE, THAT IN THE PART OF THE VARIABLE 2 WE COMMENT THAT MAYBE WE ONLY WANT THE COUNTY ID OR MAYBE THAT VARIABLE COUNTY, **REVISAR** Y DECIDIR!!
+We decided to keep this variable because it provides more meaningful information than county_id. Therefore, since we chose not to use county_id and to keep county instead, we will proceed to analyze this variable.
 
 ```{r}
 str(df$county)
-sum(is.na(df$county)) # we don't have any missing value. 
+sum(is.na(df$county)) # We don't have any missing value. 
 
 df$county <- as.factor(as.character(df$county))
 
 table(df$county)
 prop.table(table(df$county))
+sort(table(df$county))
 ```
 
 
 #   FIRST DATA ANALYSIS
 
-Un dels passos més importants es veure si la variable de resposta, és a dir, la variable target,
-en aquest cas price, segueix una distribució normal o no, és a dir si es ditribuida normally o no. 
-  
-A partir d'aqui el que farem és un anàlisi tant grafic com també estadisitic per valorar la normalitat de la variable     target price. 
+One of the most important steps is to analyze whether the response variable —that is, the target variable, in this case price, follows a normal distribution or not.
+
+From this point, we will perform both a graphical and a statistical analysis to assess the normality of the target variable price.
   
 ```{r}
 
-hist(df$price)
+hist(df$price, freq = FALSE)
+curve(dnorm(x,mean=mean(df$price), sd= sd(df$price)), lwd = 2, col= 'red', add = T)
 qqnorm(df$price)
 qqline(df$price)
-
-# IN THAT CASE WE CAN'T SAY THAT IS NORMALLY DISTRIBUITED, BUT LET'S SEE IF WITH THE SHAPIRO.TEST THE RESULT IS THE SAME    OR NOT. 
-
-#shapiro.test(df$price) # Problema, tenim massses!!!!!!!!!!!
+# IN THAT CASE WE CAN'T SAY THAT IS NORMALLY DISTRIBUITED.
 
 "LET'S CHECK APPLAYING THE LOGARITMIC TRANSFORMATION"
-
-hist(log(df$price))
+hist(log(df$price), freq = FALSE)
+curve(dnorm(x,mean=mean(df$price), sd= sd(df$price)), lwd = 2, col= 'red', add = T)
 qqnorm(log(df$price))
 qqline(log(df$price))
 
+# WE CAN SEE THAT THE POINTS ARE MORE ADJUSTED THAN BEFORE, BUT NEITHER IS FOLLOWING A NORMALLY DISTRIBUTION
+# LET'S SEE WITH THE SHAPIRO TEST USING A RANDOM SAMPLE. 
+
+# SAMPLE OF 500 OBSERVATIONS
+sample_df <- df[sample(nrow(df), 500), ]
+
+
+hist(sample$price, freq = FALSE, breaks = 50)
+curve(dnorm(x,mean=mean(sample$price), sd= sd(sample$price)), lwd = 2, col = 'red', add = T)
+
+# NOW LET'S APPLY A TRANSFORMATION, LOGARITMIC TRANSFORMATION
+hist(log(sample$price), freq = FALSE, breaks = 25)
+curve(dnorm(x,mean=mean(log(sample$price)), sd= sd(log(sample$price))), lwd = 2, col = 'red', add = T)
+
+shapiro.test(log(sample$price))
+shapiro.test(sample$price)
+
+# WE CAN CONSIDER THAT THE PRICE VARIABLE IS NOT FOLLOWING A NORMAL DISTRIBUTION, BUT LOOKING AT THE GRAPHICS WE CAN OBSERVE A LITTLE BIT OF NORMALIZATION.
+
 ```
-  
 
+# Detect multivariate outlayers. 
 
-
-# Detect univariate outlayers and multivariate outlayers. 
-
-Una de les coses mes importants que hem de fer es considerar els univariate outlayers, ja que aquests, juntament amb els multivariate outlayers, són cassos estranys fora de la normalitat, i per tant, els haurem d'analitzar amb certa atenció per veure que esta succeïnt amb aquest valor més estrany del noistre conjunt de dades. 
-
-
+One of the most important tasks we must carry out is the detection of multivariate outliers, that is, unusual cases that fall outside the normal pattern of the data. These exceptional values should be carefully analyzed to understand what is happening and to determine whether they correspond to errors, atypical observations, or meaningful information within our dataset.
 
   **MULTIVARIATE OUTLAYERS**
   
 ```{r}
 library(chemometrics)
-var_col_2 <- c(4:8,10,12,14,22,24,25,27,31,32,33,36,37); var_col_2
-df_mout <- df_copy[,var_col]; df_mout
-df_mout <- df_mout[,c(6,8:11)]
-df_mout
-res.mout <- Moutlier(df_mout)
-
+res.mout <- Moutlier(df[,c(7,9,10,11,12,14)], quantile = 0.99)
 plot(res.mout$md, res.mout$rd)
-abline(h=res.mout$cutoff, col='red')
-abline(v=res.mout$cutoff, col='red')
+abline(v = res.mout$cutoff, col= 'red')
+abline(h = res.mout$cutoff, col= 'red')
+text(res.mout$md, res.mout$rd,
+     labels = rownames(df),   # usa el ID de cada fila (o el vector que quieras)
+     pos = 4,                 # posición del texto (4 = a la derecha del punto)
+     cex = 0.7,               # tamaño del texto
+     col = "darkgray")
+
+"THERE ARE SOME MULTIVARIATE OUTLAYERS, BUT THE FACT IS THAT MOST OF THEM SEEMS TO BE VERY AGRUPATED, BUT IN FACT, THERE IS ONE   WHO ARE FAR AWAY FROM THE REST, THAT ONE MAYBE CAN CAUSE PROBLEMS IN THE FUTURE"
 ```
 
 TAKING INTO ACCOUNT THE GRAPHIC, WE HAVE A HUGE, VERY HUGE MULTIVARIANT OUTLAYER. LET'S SEE WHICH ONE IS THAT ONE THAT IS THE MULTIVARIATE OUTLAYER.
 
 ```{r}
-df_copy_2 <- df_mout
-df_copy_2
+library(FactoMineR)
+idxmout <- which(res.mout$md > res.mout$cutoff & res.mout$rd > res.mout$cutoff); idxmout; length(idxmout)
+df$mvout <- 0
+df$mvout[idxmout] <- 1
+df$mvout <- factor(df$mvout, labels = c('MVOUT-no','MVOUT-yes'))
 
-df_copy_2$mvout <- 0
-df_copy_2$mvout[which(res.mout$md > res.mout$cutoff & res.mout$rd > res.mout$cutoff)] <- 1
+res.cat <- catdes(df[,c(3:23)], num.var = 21)
+res.cat$quanti.var # THAT VARIABLE OF BEING MULTIVARIATE OUTLYER OR NOT IS ASSOCIATED WITH PRICE AND LIVING AREA MOSTLY, THE RESGT ARE PRETTY CLOSE TO 0
+res.cat$category
+res.cat$quanti
 
-df_copy_2$mvout <- factor(df_copy_2$mvout, labels = c("MVout-NO", "MVout-yes"))
-df_copy_2
-cat <- catdes(df_copy_2,6)
+# WE CAN SEE THAT THE ONE'S THAT ARE IN THE MULTIVARIATE OUTLAIER ARE THOSE ONE'S WHO HAVE A HIGHER PRICE, IN THE GROUP OF MVOUT-yes WE CAN SEE THAT THE MEAN GROUP IS SO HIGH IN COMPARIISON OF THE OVERALL, AND ALSO THE LIVING AREA, IS HIGHER.
 
-cat$quanti.var
-cat$quanti
+"ALSO FOR THE REST OF VARIABLES WE CAN SEE THAT THE VALUES ARE ALSO HIGHER IN COMPARISION WITH THE OVERALL MEAN"
 
+"SO YES, THE ONE'S THAT ARE MULTIVARIATE OUTLAYERS ARE THOSE ONE'S WHO HAS THE PRICE, LIVING AREA, BATHROOMS, BEDROOMS HIGHER THAN THE OVERALL MEAN"
 
-
+# LET'S SEE WHICH IS THE VARIABLE THAT IS FAR AWAY AND MAY BE PROBLEMATIC. -> 41
+df$price[41]
+df$livingArea[41]
+df$bathrooms[41]
+df$bedrooms[41]
 ```
-
-IM THAT CASE WE OBSERVE THAT THE ONE'S WHO ARE MULTIARIATE OUTLAYER ARE THOSE ONE'S WHO HAVE MORE PRICE/BATHROOMS/BEDRROMS AND PRICE IN LIVING AREA.
-
-
-
 
 # Errors and missing values
 
+One of the most important steps in the data analysis process is correcting errors and handling missing values. It is essential to ensure at all times that the data we work with is of high quality and free from missing values.
 
-Una de les coses mes importants es corregir les parts amb certs errors o missing values. Hem de garantir en tot moment que les dades amb les que treballem tenen qualitat i que no hi han missing values. 
+For this reason, it is crucial to properly detect and address these issues. In this case, we will use a very important function that we have already worked with several times, from the FactoMineR package, called mice. This function allows us to perform missing value imputation, ensuring that we work with high-quality data that does not contain missing information.
 
-Per aquest motiu una de les coses més importants que hem de fer es corregir aquests errors i tractar-los. 
+```{r}
+sum(is.na(df)) # WE OBSERVE HERE THAT WE DO NOT HAVE MISSING VALUES. 
+summary(df)
+```
 
-En aquest cas el que farem és ús d'una funció molt important que ja hem trebalalt amb ella varies vegades, de la llibreria de FactoMineR , que es la de mice, que ens permetra fer imputació de missing values, per assegurar que treballem amb dades de bona qualitat i que per tant, no hi han missing values. 
+# TEST FOR DISCARD SERIAL CORRELATION. 
+
+```{r}
+corr_mat <- cor(df[,c(9,10,11,12,14)])
+corr_mat
+plot(df[,c(9,10,11,12,14)])
+```
+
 
 
 # SECCIO DE DUBTES PER RESOLDRE
