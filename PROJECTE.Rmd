@@ -833,34 +833,130 @@ summary(df)
 # TEST FOR DISCARD SERIAL CORRELATION. 
 
 ```{r}
-corr_mat <- cor(df[,c(9,10,11,12,14)])
+corr_mat <- cor(df[,c(7,9,10,11,12,14)])
 corr_mat
-plot(df[,c(9,10,11,12,14)])
+plot(df[,c(7,9,10,11,12,14)])
+# PODEM OBSERVAR MES CORRELACIÓ / CORRELATION -> RELACIO LINEAL -> ENTRE LIVING AREA & BATHROOMS. CONSISTENT.
+# PODEM OBSERVAR MES CORRELACIÓ / CORRELATION -> RELACIO LINEAL -> ENTRE LIVING AREA & BATHROOMS. CONSISTENT.
+# TAMBÉ PODEM OBSERVAR LA CORRELACIO / CORRELATION -> RELACIO LINEAL -> ENTRE PRICE & LIVING AREA. CONSISTENT.
+# TAMBÉ PODEM OBSERVAR CORRELACIÓ / CORRELATION -> REALCIO LINEAL -> ENTRE PRICE & BATHROOM (CONSISTENT) & BEDROOM (MODERADA) &   GARAGESPACES (MODERADA).
 ```
 
+ANEM A FER VARÏS TESTS PER DETERMINAR SI EL PREU DEPEN DE LA LIVING AREA, O SI DEPEN DE LA CIUTAT O SI DEPEN EL PREU DE ALTRES
+VARIABLES O FACTORS, AIXÍ PODREM FER UN ANALISIS DE LA NOSTRA VARIABLE TARGET PER VEURE REALMENT COM INTERCCIONA O COM ES COMPÒRTA RESPECTE ALTRES VARIABLES. 
 
+ASSUMIM QUE LA DISTRIBUCIÓ DE PRICE SEGUEIX UNA DISTRIBUCIÓ NORMAL, NO OBSTANT, SI HAGUESSIM DE CANVIAR,SERIA PASSAR
+DE TEST PARAMETRICS A TEST NON-PARAMETRIC. 
 
-# SECCIO DE DUBTES PER RESOLDRE
+# DOES THE PRICE CHANGE ACROSS THE CITY ? EL PREU DE LA VIVENDA VARIA SEGONS LA CIUTAT ??
 
-**REVISAR** AQUEST FRAGMENT DE CODI, PER A QUÈ ÉS??
 ```{r}
-str(df)
+# H0 : PRICE IS THE SAME ACROSS THE CITIES.
+# H1 : PRICE IS DIFFERENT ACROSS THE CIITES. 
 
-df$datePostedString <- as.Date(df$datePostedString, format = "%Y-%m-%d")
-df$datePostedString <- as.numeric(format(df$datePostedString, "%Y"))
-length(df[which(df$datePostedString == 2021),]$datePostedString)
-df$stateId <- as.factor(df$stateId)
-which(df$stateId == '16')
+# Parametric
+oneway.test(df$price~df$city, data = df) # SOME ERRORS !!!!
 
-# Donat que algunes de les columnes tenen els mateixos valors, les eliminarem perquè no ens proporcionene en informació rellevant.
-df <- df[-c('hasBadGeocode', '')]
-df 
-View(df)
-which(df$currency != 'USD')
+# non-parametric
+kruskal.test(df$price~df$city, data = df)
+# HERE WE OBTAIN A P-VALUE < 0.05. SO WE CAN REJCT THE NULL HYPOTESIS. PODEM REFUTAR LA HYPOTESIS NULA, PER TANT EL PREU ES DIFERENT ACROSS THE CITIES.
+```
+
+# DOES THE PRICE CHANGE ACROSS THE COUNTY ? EL PREU DE LA VIVENDA VARIA SEGONS EL COUNTY ??
+
+```{r}
+# H0: PRICE IS THE SAME ACROSS THE COUNTY
+# H1: PRICE IS DIFFERENT ACROSS THE COUNTY
+
+# PARAMETRIC
+
+oneway.test(df$price~df$county, data = df) # Errors
+
+# NON-PARAMETRIC
+
+kruskal.test(df$price~df$county, data = df)
+
+# HERE WE OBTAIN A P-VALUE < 0.05 EVEN P-VALUE < 0.01, SO, WE CAN REJECT THE NULL HYPOTESIS. PODEM REFUTAR LA H0.
+# PRICE IS DIFFERENT ACROSS THE DIFFERENT COUNTY.
+```
+
+
+# DOES THE PRICE CHANGE ACROSS THE EVENT ? EL PREU DE LA VIVENDA VARIA SEGONS EL EVENT ??
+
+```{r}
+table(df$event)
+# H0: PRICE IS THE SAME ACROSS DIFFERENT EVENTS
+# H1: PRICE IS DIFFERENT ACROSS DIFFERENT EVENTS. 
+
+
+# PARAMETRIC
+
+oneway.test(df$price~df$event, data = df)
+# HERE WE HAVE A P-VALUE < 0.05 EVEN WE HAVE A P-VALUE < 0.01, SO WE CAN, YES WE CAN REJECT THE NULL HYPOTESIS.
+
+# NON-PARAMETRIC
+
+kruskal.test(df$price~df$event, data = df)
+# HERE WE HAVE A P-VALUE < 0.05 EVEN WE HAVE A P-VALUE < 0.01, SO WE CAN, YES WE CAN REJECT THE NULL HYPOTESIS.
+
+# PRICE IS DIFFERENT ACROSS DIFERENT EVENTS. 
 
 ```
 
-**REVISAR** ESTE FRAGMENTO DE CODIGO ESTABA EN LA VARIABLE IS_BANKEDOWNED
 
-**REVISAR**: Borramos la row entera, o solo imputamos su valor? debemos ver si el individuo solo presenta ese error, o tambien tiene otras variables distintas.
+# DOES THE PRICE CHANGE ACROSS THE LEVELS ? EL PREU DE LA VIVENDA VARIA SEGONS EL LEVELS ??
+
+```{r}
+
+table(df$levels)
+# H0: PRICE IS THE SAME ACROSS THE DIFFERENT LEVELS
+# H1: PRICE IS DIFFERENT ACROSS THE DIFFERENT LEVELS
+
+# PARAMETRIC
+oneway.test(df$price~df$levels, data = df) # SOME ERRORS.
+
+
+# NON-PARAMETRIC
+kruskal.test(df$price~df$levels, data = df)
+# HERE WE HAVE A P-VALUE < 0.05 EVEN WE HAVE A P-VALUE < 0.01, SO WE CAN, YES WE CAN REJECT THE NULL HYPOTESIS.
+
+# the price is different across the diferent levels.
+
+```
+
+
+
+# DOES THE PRICE CHANGE ACROSS THE HOME TYPE ? EL PREU DE LA VIVENDA VARIA SEGONS EL HOME TYPE ??
+
+```{r}
+table(df$homeType)
+
+# H0: Price is the same across the different home type
+# H1: Price is diferent across the different home type
+
+# PARAMETRIC
+
+t.test(df$price~df$homeType, alternative = 'two.sided', conf.level = 0.95)
+# p-value = 4.743e-09. P-VALUE < 0.05 so we CAN reject the null hypotesis.
+
+# NON-PARAMETRIC 
+wilcox.test(df$price~df$homeType, alternative = 'two.sided', conf.level = 0.95)
+# p-value = 1.323e-07. So P-VALUE < 0.05, so, we CAN reject the null hypotesis.
+
+```
+
+
+
+# DOES THE PRICE CHANGE IF YOU HAVE POOL OR NOT ? 
+
+
+
+
+# DOES THE PRICE CHANGE DEPENDING IF YOU ARE PET ALLOWED OR NOT ? 
+
+
+
+# DOES THE PRICE CHANGE IF YOU HAVE SPA OR NOT ? 
+
+
 
