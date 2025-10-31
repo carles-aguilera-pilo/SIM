@@ -746,7 +746,7 @@ qqline(df$price)
 
 "LET'S CHECK APPLAYING THE LOGARITMIC TRANSFORMATION"
 hist(log(df$price), freq = FALSE)
-curve(dnorm(x,mean=mean(df$price), sd= sd(df$price)), lwd = 2, col= 'red', add = T)
+curve(dnorm(x,mean=mean(log(df$price)), sd= sd(log(df$price))), lwd = 2, col= 'red', add = T)
 qqnorm(log(df$price))
 qqline(log(df$price))
 
@@ -948,6 +948,19 @@ wilcox.test(df$price~df$homeType, alternative = 'two.sided', conf.level = 0.95)
 
 
 # DOES THE PRICE CHANGE IF YOU HAVE POOL OR NOT ? 
+
+```{r}
+table(df$pool)
+
+# H0: THE PRICE IS THE SAME INDEPENDENTLY IF YOU HAVE POOL OR NOT
+# H1: THE PRICE IS DIFFERENT INDEPENDENTLY IF YOU HAVE A POOL OR NOT.
+
+# PARAMETRIC
+t.test(df$price~df$pool, alternative='two.sided', conf.level = 0.95)
+# P-VALUE < 0.05. PRICE IS DIFFERENT IF YOU HAVE POOL OR NOT, SO WE CAN REJECT THE NULL HYPOTESIS, LA REFUTEM LA H0.
+
+# NON-PARAMETRIC
+```
 
 
 
