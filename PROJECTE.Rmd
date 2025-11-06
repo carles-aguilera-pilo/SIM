@@ -3,9 +3,10 @@ title: "DELIVERABLE 1"
 author: "Carles Aguilera , Joel Delgado, Oriol Vilella"
 date: "2025-10-08"
 output:
-  word_document: default
+  pdf_document: default
   html_document: default
-editor_options: 
+  word_document: default
+editor_options:
   chunk_output_type: console
 ---
 
@@ -39,8 +40,8 @@ df <- subset(df, select = -stateId)
 The variable *countyId* is a nominal variable with numeric values that are used to identify the county where a house is. Also, there is another nominal variable named *county* whose values are the names of the counties. When comparing these two columns an inconsistency can be noticed: We would expect rows that share the same *county* value to also share the same *countyId*, as the latter is the numerical representation of the former. However that is not the case, as the vast majority of *countyId* values are unique (only 30 of them are repeated once). As a result, we discard this column as we consider it does not provide any useful insight that is not provided by the *county* column.
 
 ```{r}
+summary(df$countyId)
 table(df$countyId)
-prop.table(table(df$countyId))
 length(which(table(df$countyId) > 1)) # Number of values that are repeated at least one time
 length(which(table(df$countyId) > 2)) 
 # IN THAT CASE WE OBSERVE WITH THAT TABLE AND THIS CONDITIONS THAT EACH VALUE APPEARS ONLY ONE TIME, AND SOMETIMES TWO TIMES, BUT NO MORE THAN 2
@@ -221,7 +222,8 @@ qqline(log(df$price))
 
 #We observe that this follows a little bit more the normality, but still also some values that are far from the perfect line, so let's check with the shapiro.test the normality.
 
-sample <- df[1:5000,]
+set.seed(42)
+sample <- df[sample(nrow(df), 5000), ]
 shapiro.test(log(sample$price))
 # HERE WITH A SAMPLE, WE CAN SE THAT THE P-VALUE IS LESS THAN THE 0.05, SO THAT MEANS THAT THE PRICE IS NOT FOLLOWING A NORMAL DISTRIBUTION.
 
@@ -243,8 +245,6 @@ abline(h = sum_sq[2] - 3*iqr, col='red')
 abline(h = sum_sq[5] + 3*iqr, col='red')
 
 # WHO ARE THE ONE'S THAT ARE OUTLAIERS IN THE PRICE, LET'S SEE. 
-
-df[llsev,] # THE ONE'S THAT THE HOME PRICE IS ABOVE THE 1.249.000 €.
 sort(df$price[llsev])
 ```
 
@@ -259,8 +259,9 @@ This variable is interesting because, in future analyses, it could be very usefu
 However, from another point of view, if we already have the target variable price and also square_foot, the variable price_per_square_foot is simply a linear combination of these two, since it can easily be obtained by dividing the price by the number of square feet. Therefore, in this specific context, it does not provide new information or add significant value. Nevertheless, it could still be of interest for other types of analyses.
 
 ```{r}
+library(car)
 sum_sq <- summary(df$pricePerSquareFoot)
-boxplot(df$pricePerSquareFoot)
+Boxplot(df$pricePerSquareFoot)
 
 # LOOKING AT THIS, WEE HAVE A OUTLAYER, IN THAT CASE LET'S SEE WHICH IS THIS OUTLAYER. 
 iqr <- sum_sq[5] - sum_sq[2]
@@ -270,7 +271,7 @@ length(llmild); length(llsev)
 
 # SO IN THAT CASE WE HAVE TWO OUTLAYERS, LET'S SEE THAT OUTLAYERS
 
-boxplot(df$pricePerSquareFoot)
+Boxplot(df$pricePerSquareFoot)
 abline(h = sum_sq[2] - 1.5*iqr, col='green')
 abline(h = sum_sq[5] + 1.5*iqr, col='green')
 abline(h=sum_sq[2] - 3*iqr, col='red')
@@ -279,8 +280,9 @@ abline(h=sum_sq[5] - 3*iqr, col='red')
 sort(df$pricePerSquareFoot[llsev])
 
 which(df$pricePerSquareFoot == 205000) # THE OBSERVATION 1273
-df$price[1273]
-df$livingArea[1273] # 1 m^2 for living....not logic.
+# Eliminem aquest valor extrem
+
+df <- df[-1273,]
 
 # WE HAVE THIS TWO OUTLAYERS, SO LET'S SEE WHAT WE CAN DO WITH THESE OUTLAYERS.
 # THOSE OUTLAYERS CORRESPON TO THAT ONE'S THAT ARE EXPENSIVE.
@@ -322,7 +324,7 @@ MAYBE, IN THE FUTURE, THE YEAR OF THE HOUSE IT'S SO IMPORTANT, SO THAT WILL MAKE
 
 ```{r}
 summary(df$yearBuilt)
-boxplot(df$yearBuilt)
+Boxplot(df$yearBuilt)
 
 # we have also outlayers, so let's check carefully to see why these outlayers.
 
@@ -333,19 +335,18 @@ iqr <- var_year[5] - var_year[2]; iqr
 
 llmild <- which(df$yearBuilt < var_year[2] - 1.5*iqr | df$yearBuilt > var_year[5] + 1.5*iqr); llmild 
 llsev <- which(df$yearBuilt < var_year[2] - 3*iqr | df$yearBuilt > var_year[5] + 3*iqr); llsev
+length(llmild); length(llsev)
 
-boxplot(df$yearBuilt)
-abline(v = var_year[2] - 1.5*iqr , col = 'green')
-abline(v = var_year[5] + 1.5*iqr, col = 'green')
-abline(v = var_year[2] - 3*iqr, col = 'red')
-abline(v = var_year[5] + 3*iqr, col = 'red')
+Boxplot(df$yearBuilt)
+abline(h = var_year[2] - 1.5*iqr , col = 'green')
+abline(h = var_year[5] + 1.5*iqr, col = 'green')
+abline(h = var_year[2] - 3*iqr, col = 'red')
+abline(h = var_year[5] + 3*iqr, col = 'red')
 
 sort(df$yearBuilt[llsev])
 # WE CAN SEE THAT THE ONE'S THAT ARE SEVERAL OUTLAYERS ARE THOSE ONE'S THAT ARE FROM 1800 - 1840, SO OLD HOUSES, AND ALSO A HOUSE THAT IS FOR THE YEAR 9999. MAYBE WE CAN REMOVE THAT VALUE BECAUSE MAKE NO SENSE HAVING A HOUSE OF THE YEAR 9999. MAYBE IS A WRONG VALUE. 
 
-df$price[which(df$yearBuilt == 9999)] # THE PRICE FOR THIS HOME IS 285.750 €. Let's remain this value, and then in the further analysisi maybe we need to delete one.
-
-idxx <- which(df$yearBuilt > 2021)
+idxx <- which(df$yearBuilt > 2021); idxx
 df$yearBuilt[idxx] <- NA
 
 # NOW WE ARE GOING TO IMPUTE THOSE VALUES FOR THE YEAR BUILT. 
@@ -436,7 +437,7 @@ df <- subset(df, select = -buildingArea)
 
 # ANALYZE THE LIVING AREA.
 summary(df$livingArea)
-boxplot(df$livingArea)
+Boxplot(df$livingArea)
 # OUTLAYERS.
 
 var_liv <- summary(df$livingArea); var_liv
@@ -444,8 +445,9 @@ iqr <- var_liv[5] - var_liv[2]; iqr
 
 llmild <- which(df$livingArea < var_liv[2] - 1.5*iqr | df$livingArea > var_liv[5] + 1.5*iqr); llmild
 llsev <- which(df$livingArea < var_liv[2] - 3*iqr | df$livingArea > var_liv[5] + 3*iqr); llsev
+length(llmild); length(llsev)
 
-boxplot(df$livingArea)
+Boxplot(df$livingArea)
 abline(h = var_liv[2] - 1.5*iqr,col = 'green')
 abline(h = var_liv[5] + 1.5*iqr,col = 'green')
 abline(h = var_liv[2] - 3*iqr, col = 'red')
@@ -471,14 +473,14 @@ curve(dnorm(x,mean=mean(log(df$livingArea)), sd= sd(log(df$livingArea))), lwd = 
 
 ```{r}
 var_out <- summary(df$bathrooms)
-boxplot(df$bathrooms)
+Boxplot(df$bathrooms)
 
 iqr <- var_out[5] - var_out[2]
 
 llm <- which(df$bathrooms < var_out[2] - 1.5*iqr | df$bathrooms > var_out[5] + 1.5*iqr); length(llm)
 lls <- which(df$bathrooms < var_out[2] - 3*iqr | df$bathrooms > var_out[5] + 3*iqr); length(lls)
 
-boxplot(df$bathrooms)
+Boxplot(df$bathrooms)
 abline(h= var_out[2] - 1.5*iqr, col= 'green')
 abline(h= var_out[5] + 1.5*iqr, col= 'green')
 abline(h= var_out[2] - 3*iqr, col= 'red')
@@ -512,18 +514,18 @@ summary(df$bathrooms)
 
 ```{r}
 var_out <- summary(df$bedrooms)
-boxplot(df$bedrooms)
+Boxplot(df$bedrooms)
 
 iqr <- var_out[5] - var_out[2]
 
 llm <- which(df$bedrooms < var_out[2] - 1.5*iqr | df$bedrooms > var_out[5] + 1.5*iqr); length(llm)
 lls <- which(df$bedrooms < var_out[2] - 3*iqr | df$bedrooms > var_out[5] + 3*iqr); length(lls)
 
-boxplot(df$bedrooms, horizontal = TRUE)
-abline(v= var_out[2] - 1.5*iqr, col= 'green')
-abline(v= var_out[5] + 1.5*iqr, col= 'green')
-abline(v= var_out[2] - 3*iqr, col= 'red')
-abline(v= var_out[5] + 3*iqr, col='red')
+Boxplot(df$bedrooms)
+abline(h= var_out[2] - 1.5*iqr, col= 'green')
+abline(h= var_out[5] + 1.5*iqr, col= 'green')
+abline(h= var_out[2] - 3*iqr, col= 'red')
+abline(h= var_out[5] + 3*iqr, col='red')
 
 
 # tenim un total de 
@@ -614,6 +616,20 @@ hist(sqrt(df$garageSpaces), freq = FALSE)
 
 # APPLYING THE SQRT TRANSOFMRATION NEITHER.
 
+df <- subset(df, select = -has_garage)
+
+Boxplot(df$garageSpaces)
+var_gar <- summary(df$garageSpaces)
+iqr_gar <- var_gar[5] - var_gar[2]
+
+llmild <- which(df$garageSpaces < var_gar[2] - 1.5*iqr_gar | df$garageSpaces > var_gar[5] + 1.5*iqr_gar); length(llmild)
+llsev <- which(df$garageSpaces < var_gar[2] - 3*iqr_gar | df$garageSpaces > var_gar[5] + 3*iqr_gar); length(llsev)
+
+Boxplot(df$garageSpaces)
+abline(h = var_gar[2] - 1.5*iqr_gar, col = 'green')
+abline(h = var_gar[5] + 1.5*iqr_gar, col = 'green')
+abline(h = var_gar[2] - 3*iqr_gar, col = 'red')
+abline(h = var_gar[5] + 3*iqr_gar, col = 'red')
 ```
 
 
@@ -754,7 +770,7 @@ qqline(log(df$price))
 # LET'S SEE WITH THE SHAPIRO TEST USING A RANDOM SAMPLE. 
 
 # SAMPLE OF 500 OBSERVATIONS
-sample_df <- df[sample(nrow(df), 500), ]
+sample <- df[sample(nrow(df), 500), ]
 
 
 hist(sample$price, freq = FALSE, breaks = 50)
@@ -786,10 +802,11 @@ abline(h = res.mout$cutoff, col= 'red')
 text(res.mout$md, res.mout$rd,
      labels = rownames(df),   # usa el ID de cada fila (o el vector que quieras)
      pos = 4,                 # posición del texto (4 = a la derecha del punto)
-     cex = 0.7,               # tamaño del texto
-     col = "darkgray")
+     cex = 0.7)
 
 "THERE ARE SOME MULTIVARIATE OUTLAYERS, BUT THE FACT IS THAT MOST OF THEM SEEMS TO BE VERY AGRUPATED, BUT IN FACT, THERE IS ONE   WHO ARE FAR AWAY FROM THE REST, THAT ONE MAYBE CAN CAUSE PROBLEMS IN THE FUTURE"
+
+# Take into account observation 415 because can be very influential.
 ```
 
 TAKING INTO ACCOUNT THE GRAPHIC, WE HAVE A HUGE, VERY HUGE MULTIVARIANT OUTLAYER. LET'S SEE WHICH ONE IS THAT ONE THAT IS THE MULTIVARIATE OUTLAYER.
@@ -811,12 +828,6 @@ res.cat$quanti
 "ALSO FOR THE REST OF VARIABLES WE CAN SEE THAT THE VALUES ARE ALSO HIGHER IN COMPARISION WITH THE OVERALL MEAN"
 
 "SO YES, THE ONE'S THAT ARE MULTIVARIATE OUTLAYERS ARE THOSE ONE'S WHO HAS THE PRICE, LIVING AREA, BATHROOMS, BEDROOMS HIGHER THAN THE OVERALL MEAN"
-
-# LET'S SEE WHICH IS THE VARIABLE THAT IS FAR AWAY AND MAY BE PROBLEMATIC. -> 41
-df$price[41]
-df$livingArea[41]
-df$bathrooms[41]
-df$bedrooms[41]
 ```
 
 # Errors and missing values
@@ -1035,7 +1046,13 @@ plot(df$price~df$livingArea)
 cor(df$price, df$livingArea) # 0.71 positive correlation.
 ```
 
+# Let's Profile the target numeric Variable. 
 
+```{r}
+res.con <- condes(df, num.var = 7)
+```
+
+For those one's that are more correlated we will construct the regression linear model.
 
 # LET'S APPLY THE FIRST LINEAR MODEL, AND LET'S SEE IF WE CAN DO A NESTED MODEL, MORE SIMPLE OR NO. 
 
