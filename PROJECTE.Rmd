@@ -542,6 +542,12 @@ hist(df$bedrooms, freq = FALSE)
 curve(dnorm(x,mean=mean(mean(df$bedrooms)), sd= sd(df$bedrooms)), lwd = 2, col = 'red', add = T)
 
 # SEEMS TO BE SO NORMALLY DISTRIBUITED.
+
+df$bedrooms[which(df$bedrooms == 0)] <- NA
+
+res.miceB <- mice(df[,c(6,8,9,10,11,13)])
+df_imput <- complete(res.miceB)
+df$bedrooms <- df_imput$bedrooms
 ```
 
 
@@ -795,7 +801,7 @@ One of the most important tasks we must carry out is the detection of multivaria
   
 ```{r}
 library(chemometrics)
-res.mout <- Moutlier(df[,c(7,9,10,11,12,14)], quantile = 0.99)
+res.mout <- Moutlier(df[,c(6,8,9,10,11,13)], quantile = 0.99)
 plot(res.mout$md, res.mout$rd)
 abline(v = res.mout$cutoff, col= 'red')
 abline(h = res.mout$cutoff, col= 'red')
@@ -818,7 +824,7 @@ df$mvout <- 0
 df$mvout[idxmout] <- 1
 df$mvout <- factor(df$mvout, labels = c('MVOUT-no','MVOUT-yes'))
 
-res.cat <- catdes(df[,c(3:23)], num.var = 21)
+res.cat <- catdes(df[,c(3:22)], num.var = 20)
 res.cat$quanti.var # THAT VARIABLE OF BEING MULTIVARIATE OUTLYER OR NOT IS ASSOCIATED WITH PRICE AND LIVING AREA MOSTLY, THE RESGT ARE PRETTY CLOSE TO 0
 res.cat$category
 res.cat$quanti
@@ -844,7 +850,7 @@ summary(df)
 # TEST FOR DISCARD SERIAL CORRELATION. 
 
 ```{r}
-corr_mat <- cor(df[,c(7,9,10,11,12,14)])
+corr_mat <- cor(df[,c(6,8,9,10,11,13)])
 corr_mat
 plot(df[,c(7,9,10,11,12,14)])
 # PODEM OBSERVAR MES CORRELACIÓ / CORRELATION -> RELACIO LINEAL -> ENTRE LIVING AREA & BATHROOMS. CONSISTENT.
@@ -853,7 +859,10 @@ plot(df[,c(7,9,10,11,12,14)])
 # TAMBÉ PODEM OBSERVAR CORRELACIÓ / CORRELATION -> REALCIO LINEAL -> ENTRE PRICE & BATHROOM (CONSISTENT) & BEDROOM (MODERADA) &   GARAGESPACES (MODERADA).
 
 # ALSO CHECK THE AUTOCORRELATION. 
-acf(df$price) # Veiem com si tenim autocorrelation, es a dir, price esta correlacionada amb els seus valors anteriors.
+acf(df$price) 
+ll <- sample(1:nrow(df),nrow(df))
+df <- df[ll,]
+acf(df$price) # WE CAN SEE NOT AUTOCORRELATION, SO IT'S INDEPENDENT.
 ```
 
 ANEM A FER VARÏS TESTS PER DETERMINAR SI EL PREU DEPEN DE LA LIVING AREA, O SI DEPEN DE LA CIUTAT O SI DEPEN EL PREU DE ALTRES
@@ -1049,7 +1058,11 @@ cor(df$price, df$livingArea) # 0.71 positive correlation.
 # Let's Profile the target numeric Variable. 
 
 ```{r}
-res.con <- condes(df, num.var = 7)
+res.con <- condes(df[,c(3:21)], num.var = 4)
+res.con$quanti
+# variables which target price is much more correlated -> livingArea + bathrooms + bedrooms + garagespaces + yearbuilt.
+res.con$quali
+# The categorical one's which have more association are : levels    //       city       //    county . 
 ```
 
 For those one's that are more correlated we will construct the regression linear model.
@@ -1057,17 +1070,127 @@ For those one's that are more correlated we will construct the regression linear
 # LET'S APPLY THE FIRST LINEAR MODEL, AND LET'S SEE IF WE CAN DO A NESTED MODEL, MORE SIMPLE OR NO. 
 
 ```{r}
-model1 <- lm(df$price~df$livingArea+df$is_bankOwned+df$is_forAuction+df$event+df$city+df$yearBuilt+df$bathrooms+df$bedrooms
-             +df$parking+df$garageSpaces+df$levels+df$pool+df$spa+df$isNewConstruction+df$hasPetsAllowed+df$homeType
-             +df$county)
+par(mfrow = c(1,1))
+model1 <- lm(df$price~df$livingArea)
 summary(model1)
 
-model2 <- lm(df$price~df$livingArea+df$is_bankOwned+df$is_forAuction+df$event+df$yearBuilt+df$garageSpaces+df$levels+df$pool+
-            df$spa+df$isNewConstruction+df$hasPetsAllowed+df$homeType)
-summary(model2)
+plot(df$price~df$livingArea)
+lines(df$livingArea, fitted.values(model1), col = 'red')
+#text(df$price~df$livingArea, labels = row.names(df))
+par(mfrow=c(2,2))
+plot(model1)
 
-anova(model1, model2) # HERE WE HAVE THAT THE MODEL 1 IS BEST THAN THE SECOND ONE, THE SECOND ONE , MODEL 2, IS NOT AS GOOD AS MODEL 1.
+# WE CAN SEE HERE THAT THE NORMALITY IS NOT ACHIVED. 
+# ALSO THE HOMOSKEDASTIC PROPERTY IS NOT ACHIEVED, AT THE FRIST WE SEE POINTS MORE CLOSER AND IN THE MIDDLE MORE DISPERSION
+# LINEARITY IS NOT ACHIEVED ALSO.
+
+```
+
+```{r}
+cooksD <- cooks.distance(model1)
+Boxplot(cooks.distance(model1))
+abline(h = 4 / length(cooksD), col = "red", lty = 2)
+
+influents <- sort(cooksD, decreasing = TRUE)
+head(influents, 20)
+threshold <- 4 / length(cooksD)
+influential_points <- which(cooksD > threshold); length(influential_points)
+
+```
+
+```{r}
+par(mfrow = c(1,1))
+boxCox(model1) # THE VALUE FOR THE PRICE IS CLOSE TO 0.5 -> SO WE HAVE TO APPLY SQRT
+modelv1 <- lm(sqrt(df$price)~df$livingArea)
+summary(modelv1)
+boxTidwell(df$price~df$livingArea) # Value close to 1, so we'll not apply any transformation.
 ```
 
 
+
+```{r}
+model2 <- lm(df$price~df$livingArea+df$bathrooms)
+summary(model2)
+
+par(mfrow=c(2,2))
+plot(model2)
+# We haven't still have the linearity, normality and homoskedastik properties.
+
+boxCox(model2) # PROPER TO 0.5, let's apply sqrt()
+
+modelv2 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms)
+summary(modelv2)
+par(mfrow=c(2,2))
+plot(modelv2)
+
+# WE HAVE IMPROVED BUT WE STILL HAVING SOME PROBLEMS, NOW LET'S TAKE ACTION WITH THE BOXTWIDELL.
+
+boxTidwell(sqrt(df$price)~df$livingArea+df$bathrooms)
+# We obtain a lambda below 0, in that case we have to do something, in that case apply sqrt().
+
+modelv22 <- modelv2 <- lm(sqrt(df$price)~sqrt(df$livingArea)+sqrt(df$bathrooms))
+summary(modelv22)
+
+par(mfrow=c(2,2))
+plot(modelv22)
+
+# HERE WE ACHIEVED MORE LINEARITY IN THE FIRST PLOT, AND MORE NORMALITY, ALSO WE HAVE IMPROVED A LOT THE HOMOSKEDASTICITY, BUT WE CAN IMPOROVE BETTER.
+
+```
+
+
+```{r}
+model3 <- lm(df$price~df$livingArea+df$bathrooms+df$bedrooms)
+summary(model3)
+par(mfrow=c(2,2))
+plot(model3)
+# HERE WE HAVE SOME PROBLEMS
+par(mfrow=c(1,1))
+boxCox(model3) # Value close to 0.5, let's apply sqrt transformation.
+
+modelv3 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms+df$bedrooms)
+summary(modelv3)
+par(mfrow=c(2,2))
+plot(modelv3)
+boxTidwell(sqrt(df$price)~df$livingArea+df$bathrooms+df$bedrooms)
+
+modelv33 <- lm(sqrt(price) ~ I(livingArea^0.26) + sqrt(bathrooms) + I(1 / (bedrooms^0.3)),data = df)
+summary(modelv33)
+par(mfrow=c(2,2))
+plot(modelv33)
+```
+
+
+```{r}
+model4 <- lm(df$price~df$livingArea+df$bathrooms+df$bedrooms+df$garageSpaces)
+summary(model4)
+par(mfrow=c(2,2))
+plot(model4)
+
+par(mfrow=c(1,1))
+boxCox(model4)
+
+modelv4 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms+df$bedrooms+df$garageSpaces)
+summary(modelv4)
+par(mfrow=c(2,2))
+plot(modelv4)
+
+
+modelv44 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces)
+summary(modelv44)
+par(mfrow=c(2,2))
+plot(modelv44)
+
+```
+
+
+```{r}
+model5 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms+df$bedrooms+df$garageSpaces+df$yearBuilt)
+summary(model5)
+par(mfrow=c(2,2))
+plot(model5)
+
+par(mfrow=c(1,1))
+boxCox(model5) # Close to 1, so we will not make any change.
+```
 
