@@ -1070,76 +1070,6 @@ For those one's that are more correlated we will construct the regression linear
 # LET'S APPLY THE FIRST LINEAR MODEL, AND LET'S SEE IF WE CAN DO A NESTED MODEL, MORE SIMPLE OR NO. 
 
 ```{r}
-par(mfrow = c(1,1))
-model1 <- lm(df$price~df$livingArea)
-summary(model1)
-
-plot(df$price~df$livingArea)
-lines(df$livingArea, fitted.values(model1), col = 'red')
-#text(df$price~df$livingArea, labels = row.names(df))
-par(mfrow=c(2,2))
-plot(model1)
-
-# WE CAN SEE HERE THAT THE NORMALITY IS NOT ACHIVED. 
-# ALSO THE HOMOSKEDASTIC PROPERTY IS NOT ACHIEVED, AT THE FRIST WE SEE POINTS MORE CLOSER AND IN THE MIDDLE MORE DISPERSION
-# LINEARITY IS NOT ACHIEVED ALSO.
-
-```
-
-```{r}
-cooksD <- cooks.distance(model1)
-Boxplot(cooks.distance(model1))
-abline(h = 4 / length(cooksD), col = "red", lty = 2)
-
-influents <- sort(cooksD, decreasing = TRUE)
-head(influents, 20)
-threshold <- 4 / length(cooksD)
-influential_points <- which(cooksD > threshold); length(influential_points)
-
-```
-
-```{r}
-par(mfrow = c(1,1))
-boxCox(model1) # THE VALUE FOR THE PRICE IS CLOSE TO 0.5 -> SO WE HAVE TO APPLY SQRT
-modelv1 <- lm(sqrt(df$price)~df$livingArea)
-summary(modelv1)
-boxTidwell(df$price~df$livingArea) # Value close to 1, so we'll not apply any transformation.
-```
-
-
-
-```{r}
-model2 <- lm(df$price~df$livingArea+df$bathrooms)
-summary(model2)
-
-par(mfrow=c(2,2))
-plot(model2)
-# We haven't still have the linearity, normality and homoskedastik properties.
-
-boxCox(model2) # PROPER TO 0.5, let's apply sqrt()
-
-modelv2 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms)
-summary(modelv2)
-par(mfrow=c(2,2))
-plot(modelv2)
-
-# WE HAVE IMPROVED BUT WE STILL HAVING SOME PROBLEMS, NOW LET'S TAKE ACTION WITH THE BOXTWIDELL.
-
-boxTidwell(sqrt(df$price)~df$livingArea+df$bathrooms)
-# We obtain a lambda below 0, in that case we have to do something, in that case apply sqrt().
-
-modelv22 <- modelv2 <- lm(sqrt(df$price)~sqrt(df$livingArea)+sqrt(df$bathrooms))
-summary(modelv22)
-
-par(mfrow=c(2,2))
-plot(modelv22)
-
-# HERE WE ACHIEVED MORE LINEARITY IN THE FIRST PLOT, AND MORE NORMALITY, ALSO WE HAVE IMPROVED A LOT THE HOMOSKEDASTICITY, BUT WE CAN IMPOROVE BETTER.
-
-```
-
-
-```{r}
 model3 <- lm(df$price~df$livingArea+df$bathrooms+df$bedrooms)
 summary(model3)
 par(mfrow=c(2,2))
@@ -1158,6 +1088,13 @@ modelv33 <- lm(sqrt(price) ~ I(livingArea^0.26) + sqrt(bathrooms) + I(1 / (bedro
 summary(modelv33)
 par(mfrow=c(2,2))
 plot(modelv33)
+
+# INTERACTIONS -> NOT BETTER.
+modelv333 <- lm(sqrt(price) ~ I(livingArea^0.26) + sqrt(bathrooms)* I(1 / (bedrooms^0.3)),data = df)
+summary(modelv333)
+
+modelv333 <- lm(sqrt(price) ~ I(livingArea^0.26)*I(1 / (bedrooms^0.3)) + sqrt(bathrooms),data = df)
+summary(modelv333)
 ```
 
 
@@ -1166,6 +1103,7 @@ model4 <- lm(df$price~df$livingArea+df$bathrooms+df$bedrooms+df$garageSpaces)
 summary(model4)
 par(mfrow=c(2,2))
 plot(model4)
+vif(model4)
 
 par(mfrow=c(1,1))
 boxCox(model4)
@@ -1174,12 +1112,43 @@ modelv4 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms+df$bedrooms+df$garageSpa
 summary(modelv4)
 par(mfrow=c(2,2))
 plot(modelv4)
+vif(modelv4)
 
 
 modelv44 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces)
 summary(modelv44)
 par(mfrow=c(2,2))
 plot(modelv44)
+vif(modelv44) # SEGONS CERTS ANÀLISI D?INTERNET EL MILLOR SERIA AQUEST.
+
+# INTERACTIONS 
+
+modelv444 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)*df$garageSpaces)
+summary(modelv444)
+par(mfrow=c(2,2))
+plot(modelv444)
+vif(modelv444)
+AIC(modelv44, modelv444)
+
+# AQUI QUE FEM PERQUE SERIA MILLOR AGAFAR EL MODELV444.
+
+modelv4444 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)*df$garageSpaces+log(df$bedrooms))
+summary(modelv4444)
+par(mfrow=c(2,2))
+plot(modelv4444)
+vif(modelv4444)
+AIC(modelv44, modelv4444)
+AIC(modelv444,modelv4444) # SERIA AQUEST ULTIMA LA MILLOR ? 
+
+
+modelv4444x <- lm(sqrt(df$price)~log(df$livingArea)*df$garageSpaces+sqrt(df$bathrooms)+log(df$bedrooms))
+summary(modelv4444x)
+par(mfrow=c(2,2))
+plot(modelv4444x)
+vif(modelv4444x) #COLINEARITAT.
+AIC(modelv44, modelv4444x)
+AIC(modelv4444, modelv4444x) # SERIA EL MILLOR.
+
 
 ```
 
@@ -1189,8 +1158,36 @@ model5 <- lm(sqrt(df$price)~df$livingArea+df$bathrooms+df$bedrooms+df$garageSpac
 summary(model5)
 par(mfrow=c(2,2))
 plot(model5)
-
 par(mfrow=c(1,1))
-boxCox(model5) # Close to 1, so we will not make any change.
+boxCox(model5) # Close to 1, so we will not make any change. WE save the sqrt
+vif(model5)
+Anova(model5)
+
+model55 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$yearBuilt)
+summary(model55)
+par(mfrow=c(2,2))
+plot(modelv55)
+vif(model55)
+
+
+model55_noYear <- update(model55, . ~ . - df$yearBuilt)
+anova(model55_noYear, model55)
+
+# ES MILLOR NO INCLOURE EL YEARBUILT, AMB ANOVA HO HEM COMPROVAT.
+
+
+
+
+model555 <- lm(sqrt(df$price)~log(df$livingArea)*df$garageSpaces+sqrt(df$bathrooms)+log(df$bedrooms)+df$yearBuilt)
+summary(model555)
+vif(model555) # HI HA COLINEARITAT. 
+
+# INTERACTION
+
+modelv5 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces*df$yearBuilt)
+summary(modelv5)
+vif(modelv5)
+
+
 ```
 
