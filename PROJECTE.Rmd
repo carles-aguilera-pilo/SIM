@@ -542,10 +542,10 @@ hist(df$bedrooms, freq = FALSE)
 curve(dnorm(x,mean=mean(mean(df$bedrooms)), sd= sd(df$bedrooms)), lwd = 2, col = 'red', add = T)
 
 # SEEMS TO BE SO NORMALLY DISTRIBUITED.
+idxbed <- which(df$bedrooms == 0); idxbed
+df$bedrooms[idxbed] <- NA
 
-df$bedrooms[which(df$bedrooms == 0)] <- NA
-
-res.miceB <- mice(df[,c(6,8,9,10,11,13)])
+res.miceB <- mice(df[,c(7,9,10,11,12)])
 df_imput <- complete(res.miceB)
 df$bedrooms <- df_imput$bedrooms
 ```
@@ -622,7 +622,7 @@ hist(sqrt(df$garageSpaces), freq = FALSE)
 
 # APPLYING THE SQRT TRANSOFMRATION NEITHER.
 
-df <- subset(df, select = -has_garage)
+df <- subset(df, select = -hasGarage)
 
 Boxplot(df$garageSpaces)
 var_gar <- summary(df$garageSpaces)
@@ -801,7 +801,7 @@ One of the most important tasks we must carry out is the detection of multivaria
   
 ```{r}
 library(chemometrics)
-res.mout <- Moutlier(df[,c(6,8,9,10,11,13)], quantile = 0.99)
+res.mout <- Moutlier(df[,c(7,9,10,11,12,14)], quantile = 0.99)
 plot(res.mout$md, res.mout$rd)
 abline(v = res.mout$cutoff, col= 'red')
 abline(h = res.mout$cutoff, col= 'red')
@@ -850,7 +850,7 @@ summary(df)
 # TEST FOR DISCARD SERIAL CORRELATION. 
 
 ```{r}
-corr_mat <- cor(df[,c(6,8,9,10,11,13)])
+corr_mat <- cor(df[,c(7,9,10,11,12,14)])
 corr_mat
 plot(df[,c(7,9,10,11,12,14)])
 # PODEM OBSERVAR MES CORRELACIÓ / CORRELATION -> RELACIO LINEAL -> ENTRE LIVING AREA & BATHROOMS. CONSISTENT.
@@ -861,8 +861,8 @@ plot(df[,c(7,9,10,11,12,14)])
 # ALSO CHECK THE AUTOCORRELATION. 
 acf(df$price) 
 ll <- sample(1:nrow(df),nrow(df))
-df <- df[ll,]
-acf(df$price) # WE CAN SEE NOT AUTOCORRELATION, SO IT'S INDEPENDENT.
+df_samp <- df[ll,]
+acf(df_samp$price) # WE CAN SEE NOT AUTOCORRELATION, SO IT'S INDEPENDENT.
 ```
 
 ANEM A FER VARÏS TESTS PER DETERMINAR SI EL PREU DEPEN DE LA LIVING AREA, O SI DEPEN DE LA CIUTAT O SI DEPEN EL PREU DE ALTRES
@@ -1058,7 +1058,7 @@ cor(df$price, df$livingArea) # 0.71 positive correlation.
 # Let's Profile the target numeric Variable. 
 
 ```{r}
-res.con <- condes(df[,c(3:21)], num.var = 4)
+res.con <- condes(df[,c(3:21)], num.var = 5)
 res.con$quanti
 # variables which target price is much more correlated -> livingArea + bathrooms + bedrooms + garagespaces + yearbuilt.
 res.con$quali
@@ -1070,10 +1070,12 @@ For those one's that are more correlated we will construct the regression linear
 # LET'S APPLY THE FIRST LINEAR MODEL, AND LET'S SEE IF WE CAN DO A NESTED MODEL, MORE SIMPLE OR NO. 
 
 ```{r}
+options(contrasts=c("contr.treatment","contr.treatment")) # FIXAR.
 model3 <- lm(df$price~df$livingArea+df$bathrooms+df$bedrooms)
 summary(model3)
 par(mfrow=c(2,2))
 plot(model3)
+vif(model3)
 # HERE WE HAVE SOME PROBLEMS
 par(mfrow=c(1,1))
 boxCox(model3) # Value close to 0.5, let's apply sqrt transformation.
@@ -1088,13 +1090,15 @@ modelv33 <- lm(sqrt(price) ~ I(livingArea^0.26) + sqrt(bathrooms) + I(1 / (bedro
 summary(modelv33)
 par(mfrow=c(2,2))
 plot(modelv33)
+vif(modelv33)
 
 # INTERACTIONS -> NOT BETTER.
 modelv333 <- lm(sqrt(price) ~ I(livingArea^0.26) + sqrt(bathrooms)* I(1 / (bedrooms^0.3)),data = df)
 summary(modelv333)
-
+vif(modelv333)
 modelv333 <- lm(sqrt(price) ~ I(livingArea^0.26)*I(1 / (bedrooms^0.3)) + sqrt(bathrooms),data = df)
 summary(modelv333)
+vif(modelv333)
 ```
 
 
@@ -1119,35 +1123,9 @@ modelv44 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedro
 summary(modelv44)
 par(mfrow=c(2,2))
 plot(modelv44)
-vif(modelv44) # SEGONS CERTS ANÀLISI D?INTERNET EL MILLOR SERIA AQUEST.
-
-# INTERACTIONS 
-
-modelv444 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)*df$garageSpaces)
-summary(modelv444)
-par(mfrow=c(2,2))
-plot(modelv444)
-vif(modelv444)
-AIC(modelv44, modelv444)
-
-# AQUI QUE FEM PERQUE SERIA MILLOR AGAFAR EL MODELV444.
-
-modelv4444 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)*df$garageSpaces+log(df$bedrooms))
-summary(modelv4444)
-par(mfrow=c(2,2))
-plot(modelv4444)
-vif(modelv4444)
-AIC(modelv44, modelv4444)
-AIC(modelv444,modelv4444) # SERIA AQUEST ULTIMA LA MILLOR ? 
-
-
-modelv4444x <- lm(sqrt(df$price)~log(df$livingArea)*df$garageSpaces+sqrt(df$bathrooms)+log(df$bedrooms))
-summary(modelv4444x)
-par(mfrow=c(2,2))
-plot(modelv4444x)
-vif(modelv4444x) #COLINEARITAT.
-AIC(modelv44, modelv4444x)
-AIC(modelv4444, modelv4444x) # SERIA EL MILLOR.
+vif(modelv44) # SEGONS CERTS ANÀLISI D?INTERNET EL MILLOR SERIA AQUEST. (AGAFEM AQUEST DE MOMENT).
+residualPlots(modelv44)
+stepx <- step(modelv44, k=log(nrow(df)))
 
 
 ```
@@ -1163,31 +1141,88 @@ boxCox(model5) # Close to 1, so we will not make any change. WE save the sqrt
 vif(model5)
 Anova(model5)
 
+
 model55 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$yearBuilt)
 summary(model55)
 par(mfrow=c(2,2))
-plot(modelv55)
+plot(model55)
 vif(model55)
-
 
 model55_noYear <- update(model55, . ~ . - df$yearBuilt)
 anova(model55_noYear, model55)
 
-# ES MILLOR NO INCLOURE EL YEARBUILT, AMB ANOVA HO HEM COMPROVAT.
+model5_ <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces)
+summary(model5_)
+vif(model5_)
+
+# ES MILLOR NO INCLOURE EL YEARBUILT, AMB ANOVA HO HEM COMPROVAT. -> MODEL 5_no_year = model_5
+
+# ANEM A DISCRETITZAR YEAR
+
+breaks <- quantile(df$f.antig, probs = seq(0, 1, by = 0.25))
+df$f.year <- cut(df$f.antig, breaks = breaks, include.lowest = TRUE)
+df$f.antig <- 2021 - df$yearBuilt
+model5d <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$f.year)
+summary(model5d)
+
+model5d2 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$f.antig)
+AIC(model5d, model5d2)
+vif(model5d)
+anova(model5_, model5d) # EL MILLOR model5d
+AIC(model5_, model5d)
+
+```
+
+
+# AFEGIM CATEGORIQUES.
+
+
+```{r}
+m1 <- lm(sqrt(sqrt(df$price))~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$f.year+factor(df$levels))
+summary(m1)
+par(mfrow=c(2,2))
+plot(m1)
+str(df$f.year)
+m2 <- lm(sqrt(sqrt(df$price))~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$f.year*factor(df$levels))
+summary(m2)
+par(mfrow=c(2,2))
+plot(m2)
+
+boxCox(m1)
+boxCox(m2)
+anova(m1,m2) 
+# hem quedo amb el complex. 
+```
+
+
+```{r}
+
+m3 <- lm(sqrt(sqrt(df$price))~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$f.year*(factor(df$levels) + factor(df$city)+factor(df$county)))
+summary(m3)
+par(mfrow=c(2,2))
+plot(m3)
+AIC(m1,m2)
+AIC(m2,m3)
+AIC(m1,m3)
+anova(m2,m3)
+
+```
 
 
 
-
-model555 <- lm(sqrt(df$price)~log(df$livingArea)*df$garageSpaces+sqrt(df$bathrooms)+log(df$bedrooms)+df$yearBuilt)
-summary(model555)
-vif(model555) # HI HA COLINEARITAT. 
-
-# INTERACTION
-
-modelv5 <- lm(sqrt(df$price)~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces*df$yearBuilt)
-summary(modelv5)
-vif(modelv5)
+```{r}
+mp <- lm(sqrt(sqrt(df$price))~log(df$livingArea)+sqrt(df$bathrooms)+log(df$bedrooms)+df$garageSpaces+df$f.year+factor(df$levels) + factor(df$city)+factor(df$county)+factor(df$spa)+factor(df$pool))
+summary(mp)
+par(mfrow=c(2,2))
+plot(mp)
+```
 
 
+```{r}
+stepm1 <- step(m1, k=log(nrow(df)))
+modelstep1 <- lm(sqrt(sqrt(df$price)) ~ log(df$livingArea) + sqrt(df$bathrooms) + 
+    log(df$bedrooms) + df$garageSpaces + factor(df$city))
+summary(modelstep1)
+vif(modelstep1)
 ```
 
