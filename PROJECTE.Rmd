@@ -26,6 +26,13 @@ df_old <- df
 
 The first step of a data science project involves cleaning the raw data set. In this section we address how to deal with missing values, correcting inconsistencies and transforming the data into a format suitable for algorithms. Therefore, in this section, we will study each variable in order to clean as much as possible the dataset for the future results to be as accurate as possible.
 
+## Variable 0: *X.1* i *X*
+
+```{r}
+df$X.1 <- NULL
+df$X <- NULL
+```
+
 ## Variable 1: *stateId*
 
 Although *stateId* seems to be a nominal variable since it represents a state category, it is not really a variable because its value never changes: All rows have *stateId* = 16, which stands for Georgia state. Therefore, this column does not provide any relevant information to any statistical model, so it can be removed from our dataframe.
@@ -110,7 +117,7 @@ df <- df[df$datePostedString == 2021,]
 df <- subset(df, select = -datePostedString)
 ```
 
-# Variable 6: is_bankOwned.
+# Variable 6: is_bankOwned (PENDENT)
 
 This variable indicates whether the property belongs to the bank or not. Since it is a binary variable, we consider it more appropriate to treat it as a categorical (qualitative) variable, distinguishing two categories: Yes and No, depending on whether the property is bank-owned or not.
 
@@ -121,6 +128,7 @@ For this reason, we analyzed this variable to identify which values correspond t
 ```{r}
 summary(df$is_bankOwned)
 table(df$is_bankOwned) # This shows that there are only two values
+prop.table(table(df$is_bankOwned))
 
 df$is_bankOwned <- factor(df$is_bankOwned, labels = c("NO", "YES")) # LET'S TRANSFORM THAT VARIABLE TO A CATEGORICAL / FACTOR VARIABLE.
 barplot(table(df$is_bankOwned), xlab="Is Bank Owned?")
@@ -135,7 +143,7 @@ Here we have to decide whether we declare the value for this observation as an e
 df <- subset(df, select = -is_bankOwned)
 ```
 
-# Variable 7: is_forAuction
+# Variable 7: is_forAuction (PENDENT)
 
 This variable indicates whether a given house is being auctioned or not. In this case, the treatment applied is very similar to the one used previously: we checked for variability between the values 0 and 1, in order to confirm that there are houses that are auctioned and others that are not.
 
@@ -262,6 +270,8 @@ However, from another point of view, if we already have the target variable pric
 library(car)
 sum_sq <- summary(df$pricePerSquareFoot)
 Boxplot(df$pricePerSquareFoot)
+table(df$pricePerSquareFoot == df$price/df$livingArea)
+
 
 # LOOKING AT THIS, WEE HAVE A OUTLAYER, IN THAT CASE LET'S SEE WHICH IS THIS OUTLAYER. 
 iqr <- sum_sq[5] - sum_sq[2]
@@ -279,7 +289,7 @@ abline(h=sum_sq[5] - 3*iqr, col='red')
 
 sort(df$pricePerSquareFoot[llsev])
 
-which(df$pricePerSquareFoot == 205000) # THE OBSERVATION 1273
+df[which(df$pricePerSquareFoot == 205000),] # THE OBSERVATION 1273
 # Eliminem aquest valor extrem
 
 df <- df[-1273,]
@@ -288,7 +298,6 @@ df <- df[-1273,]
 # THOSE OUTLAYERS CORRESPON TO THAT ONE'S THAT ARE EXPENSIVE.
 
 "Considering what we have mentioned before, we can remove this variable. Since we already have price and living area (which represents the square footage of the house), this value can be easily computed from those two variables."
-df <- subset(df, select = -pricePerSquareFoot)
 ```
 
 #variable 12 CITY.
@@ -348,15 +357,7 @@ sort(df$yearBuilt[llsev])
 
 idxx <- which(df$yearBuilt > 2021); idxx
 df$yearBuilt[idxx] <- NA
-
 # NOW WE ARE GOING TO IMPUTE THOSE VALUES FOR THE YEAR BUILT. 
-library(mice)
-res.im <- mice(df[,c(7,9,10,11,12,13,14,15)])
-df_i <- complete(res.im)
-
-summary(df$yearBuilt); summary(df_i$yearBuilt)
-
-df$yearBuilt <- df_i$yearBuilt
 summary(df$yearBuilt)
 ```
 
@@ -497,15 +498,8 @@ curve(dnorm(x, mean=mean(df$bathrooms), sd=sd(df$bathrooms)), lwd = 2, col = 're
 # FOR THOSE WHO HAS 0 BATHROOMS, LET'S PUT THE NA VALUE AND THEN LET'S IMPUTE THEM. THERE ARE SO FEW WHO HAS NOT BATHROOM.
 indx <- which(df$bathrooms == 0); indx
 df$bathrooms[indx] <- NA
-library(mice)
-res.im <- mice(df[,c(7,9,10,11,12,13,14,15)])
-df_im <- complete(res.im)
-
-summary(df$bathrooms);summary(df_im$bathrooms)
 
 # WE CAN SEE THAT THE DISTRIBUTION REMAIN EQUALLY, SO THAT IMPUTATION IS CORRECT. 
-
-df$bathrooms <- df_im$bathrooms
 summary(df$bathrooms)
 ```
 
@@ -533,8 +527,6 @@ length(llm) + length(lls) # $413 outlayers.
 
 # let's see the one's that are outlayers, why they are
 
-df[lls,]
-table(df$homeType[lls]) # MOst of them are from single family.
 
 # NOW LET'S SEE THE DISTRIBUTION:
 
@@ -544,10 +536,6 @@ curve(dnorm(x,mean=mean(mean(df$bedrooms)), sd= sd(df$bedrooms)), lwd = 2, col =
 # SEEMS TO BE SO NORMALLY DISTRIBUITED.
 idxbed <- which(df$bedrooms == 0); idxbed
 df$bedrooms[idxbed] <- NA
-
-res.miceB <- mice(df[,c(7,9,10,11,12)])
-df_imput <- complete(res.miceB)
-df$bedrooms <- df_imput$bedrooms
 ```
 
 
@@ -584,41 +572,14 @@ summary(df$parking); summary(df$hasGarage); summary(df$garageSpaces)
 
 # IN CASE WE HAVE NA VALUES DUE TO THE INCONSITECNY OF THAT 3 VARIABLES, LET'S IMPUTE THEM USING MICE.
 
-library(mice)
-res.imp <- mice(df[,c(7,9,10,11,12,13,14,15)])
-df_imp <- complete(res.imp)
-
-quantile(df$parking, na.rm = TRUE)
-quantile(df_imp$parking)
-
-quantile(df$hasGarage, na.rm = TRUE)
-quantile(df_imp$hasGarage)
-
-quantile(df$garageSpaces, na.rm = TRUE)
-quantile(df_imp$g)
-
-summary(df$parking); summary(df_imp$parking)
-summary(df$hasGarage); summary(df_imp$hasGarage)
-summary(df$garageSpaces); summary(df_imp$garageSpaces)
-
 # WE LOOK HERE WITH THAT VALIDATION THAT THE DISTRIBTUION IT REMAINS ALMOST THE SAME
 
 # LET'S SEE THE DISTRIBUTION IN THE GARAGESPACES.
-
-df$garageSpaces <- df_imp$garageSpaces
 
 summary(df$garageSpaces)
 
 hist(df$garageSpaces, freq = FALSE)
 curve(dnorm(x,mean=mean(df$garageSpaces),sd=sd(df$garageSpaces)), lwd = 2, col = 'red',add= T)
-
-# WE LOOK THAT THIS IS NOT FOLLOWING A NORMAL DISTRIBTUION.
-
-hist(log(df$garageSpaces), freq = FALSE)
-
-# APPLYING THE LOGARITMIC TRANSFORMATION NEITHER.
-
-hist(sqrt(df$garageSpaces), freq = FALSE)
 
 # APPLYING THE SQRT TRANSOFMRATION NEITHER.
 df$parking <- factor(df$parking, labels = c("SI", "NO"))
@@ -757,6 +718,46 @@ prop.table(table(df$county))
 sort(table(df$county))
 ```
 
+```{r}
+df$levels_clean <- NULL
+library(mice)
+res.mice <- mice(df[,c(2,5:12)])
+df_imp <- complete(res.mice)
+df_copy_old <- df
+df[,c(2,5:12)] <- df_imp
+summary(df)
+
+df$f.bath <- as.factor(df$bathrooms)
+summary(df$f.bath)
+df$f.bath <- ifelse(df$bathrooms %in% c(1, 2, 3),
+                          df$bathrooms,
+                          "Other")
+table(df$f.bath)
+
+df$f.bed <- as.factor(df$bedrooms)
+df$f.bed <- cut(df$bedrooms, quantile(df$bedrooms, prob = seq(0,1,0.5)))
+table(df$f.bed)
+
+summary(df$garageSpaces)
+df$garageSpaces <- as.numeric(df$garageSpaces)
+summary(df$f.bath)
+breaks_vector <- c(-Inf, 2.5, Inf)
+labels_vector <- c("0_1_2_Spaces", "More_than_2_Spaces")
+df$f.gar <- cut(
+    df$garageSpaces,
+    breaks = breaks_vector,
+    labels = labels_vector,
+    right = TRUE,      # Esto hace que el intervalo sea (a, b], lo cual es importante para Inf
+    include.lowest = TRUE # Asegura que el valor más bajo (-Inf) sea incluido
+)
+
+table(df$f.gar)
+
+df$antiguetat <- 2021 - df$yearBuilt
+df$f.antig <- cut(df$antiguetat, quantile(df$antiguetat, prob = seq(0,1,0.2)))
+table(df$f.antig)
+```
+
 
 #   FIRST DATA ANALYSIS
 
@@ -807,7 +808,7 @@ One of the most important tasks we must carry out is the detection of multivaria
   
 ```{r}
 library(chemometrics)
-res.mout <- Moutlier(df[,c(7,9,10,11,12,14)], quantile = 0.99)
+res.mout <- Moutlier(df[,c(3,4,6,7,11)], quantile = 0.99)
 plot(res.mout$md, res.mout$rd)
 abline(v = res.mout$cutoff, col= 'red')
 abline(h = res.mout$cutoff, col= 'red')
@@ -830,7 +831,7 @@ df$mvout <- 0
 df$mvout[idxmout] <- 1
 df$mvout <- factor(df$mvout, labels = c('MVOUT-no','MVOUT-yes'))
 
-res.cat <- catdes(df[,c(3:22)], num.var = 20)
+res.cat <- catdes(df[,c(3:24)], num.var = 22)
 res.cat$quanti.var # THAT VARIABLE OF BEING MULTIVARIATE OUTLYER OR NOT IS ASSOCIATED WITH PRICE AND LIVING AREA MOSTLY, THE RESGT ARE PRETTY CLOSE TO 0
 res.cat$category
 res.cat$quanti
@@ -856,7 +857,7 @@ summary(df)
 # TEST FOR DISCARD SERIAL CORRELATION. 
 
 ```{r}
-corr_mat <- cor(df[,c(7,9,10,11,12,14)])
+corr_mat <- cor(df[,c(7,8,10,11,12,14)])
 corr_mat
 plot(df[,c(7,9,10,11,12,14)])
 # PODEM OBSERVAR MES CORRELACIÓ / CORRELATION -> RELACIO LINEAL -> ENTRE LIVING AREA & BATHROOMS. CONSISTENT.
@@ -1064,7 +1065,7 @@ cor(df$price, df$livingArea) # 0.71 positive correlation.
 # Let's Profile the target numeric Variable. 
 
 ```{r}
-res.con <- condes(df[,c(6:21)], num.var = 2)
+res.con <- condes(df[,c(2:23)], num.var = 2)
 res.con$quanti
 # variables which target price is much more correlated -> livingArea + bathrooms + bedrooms + garagespaces + yearbuilt.
 res.con$quali
@@ -1110,6 +1111,13 @@ AIC(m3,m4) # millor model 3
 ```
 
 
+
+```{r}
+
+```
+
+
+
 ```{r}
 mx1 <-  lm(sqrt(price)~sqrt(livingArea)+bathrooms, data = df)
 summary(mx1)
@@ -1129,16 +1137,26 @@ AIC(mx1, mx2) # mx2 me'l quedo, es el millor
 ```
 
 ```{r}
-mxx1 <-  lm(sqrt(price)~sqrt(livingArea)+sqrt(bathrooms) + bedrooms, data = df)
+mxx1 <-  lm(sqrt(price)~livingArea+bathrooms + pricePerSquareFoot, data = df)
 summary(mxx1)
+par(mfrow=c(2,2))
 plot(mxx1)
+boxCox(mxx1)
+vif(mxx1)
+cor(df$price,df$pricePerSquareFoot)
 residualPlots(mxx1)
 
 anova(mxx1, mx2) # ENS PROPROCIONA INFORMACIÓ IMPORTANT EL COMPLEX. 
 AIC(mxx1,m2)
-boxTidwell(sqrt(price)~sqrt(livingArea)+sqrt(bathrooms) + bedrooms, data = df)
-
-mxx2 <-  lm(sqrt(price)~sqrt(livingArea)+sqrt(bathrooms) + sqrt(bedrooms), data = df)
+hist(df$garageSpaces)
+boxTidwell(sqrt(price)~livingArea+pricePerSquareFoot , data = df)
+plot(df$bathrooms, df$price)
+summary(df$livingArea)
+summary(df$bathrooms)
+summary(df$pricePerSquareFoot)
+summary(df$price)
+sqrt(df$price)
+mxx2 <-  lm(sqrt(price)~sqrt(livingArea)+sqrt(bathrooms) + poly(pricePerSquareFoot,2), data = df)
 summary(mxx2)
 plot(mxx2)
 residualPlots(mxx2)
@@ -1190,7 +1208,7 @@ residualPlots(mxxx1)
 anova(mxx4,mxxx1) # EL MODEL COMPLEX EXPLICA ALGO MES.
 AIC(mxx4, mxxx1) # EL MILLOR mxxx1.
 
-modelv444 <-lm(log(price)~log(livingArea)+log(bathrooms)+log(bedrooms)+poly(garageSpaces,2), data = df)
+modelv444 <-lm(log(price)~log(livingArea)+log(bathrooms)+poly(garageSpaces,2), data = df)
 summary(modelv444)
 plot(modelv444)
 residualPlots(modelv444)
@@ -1219,8 +1237,8 @@ abline(h = cok_out[5]+3*iqrC, col = 'red')
 
 res_out <- summary(residuals(modelv444)); res_out
 iqr <- res_out[5]-res_out[2];
-res <- residuals(modelv444);
-Boxplot(residuals(modelv444))
+res <- rstudent(modelv444);
+Boxplot(res)
 idx <- which(res < res_out[2]-3*iqr | res > res_out[5] + 3*iqr); length(idx)
 Boxplot(residuals(modelv444))
 abline(h = res_out[2] -3*iqr, col = 'red')
