@@ -1216,7 +1216,6 @@ AIC(mx1,mx2)
 
 # AFEGIM CATEGORIQUES. 
 
-
 mc1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2) + pool + levels + event + parking + f.bed, data = df)
 summary(mc1)
 plot(mc1)
@@ -1258,7 +1257,6 @@ res2 <- cooks.distance(mi2)
 idx1 <- which(res1 < -3 | res1 > 3); length(idx1)
 idx2 <- which(res2 > 0.5); length(idx2)
 
-df <- df[-c(idx1,idx2),]
 ```
 
 
