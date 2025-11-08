@@ -1137,6 +1137,7 @@ AIC(mdlv3, mdlv4)
 mdlv4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot), data = df)
 summary(mdlv4)
 vif(mdlv4)
+par(mfrow=c(2,2))
 plot(mdlv4)
 # QUEDEM AMB EL 4.
 
@@ -1173,9 +1174,10 @@ mix1 <- lm(log(price)~(log(livingArea)+log(pricePerSquareFoot))*(f.bed + parking
 summary(mix1)
 par(mfrow=c(2,2))
 plot(mix1)
+vif(mix1)
 
 stepmm <- step(mix1, k=log(nrow(df)))
-
+vif(stepmm)
 mdstep <- lm(log(price) ~ log(livingArea) + log(pricePerSquareFoot) * (isNewConstruction + event), data = df)
 summary(mdstep)
 par(mfrow=c(2,2))
@@ -1191,7 +1193,7 @@ resx2 <- rstudent(mdstep)
 
 idxx1 <- which(resx1 > 0.5 ); length(idxx1)
 idxx2 <- which(resx2 > 3 | resx2 < -3); length(idxx2)
-
+vif(mdstep)
 df <- df[-c(idxx1,idxx2),]
 residualPlots(mdstep)
 
@@ -1235,7 +1237,7 @@ plot(stepi)
 
 summary(df$antiguetat)
 
-mi2 <- md_final <- lm(
+mi2  <- lm(
   log(price) ~ log(livingArea) + log(bathrooms) + pool + event + f.bed +
     (poly(antiguetat, 2) * levels) +
     (poly(antiguetat, 2) * parking),
@@ -1245,7 +1247,7 @@ vif(mi2)
 summary(mi2)
 par(mfrow=c(2,2))
 plot(mi2)
-
+residualPlots(mi2)
 
 # DELETE OUTLAYERS, EXTREME. 4/5 iteracions. 
 df_copy <- df
@@ -1256,6 +1258,7 @@ res2 <- cooks.distance(mi2)
 
 idx1 <- which(res1 < -3 | res1 > 3); length(idx1)
 idx2 <- which(res2 > 0.5); length(idx2)
+df <- df[-c(idx1,idx2),]
 
 ```
 
