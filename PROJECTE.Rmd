@@ -758,6 +758,9 @@ df$f.antig <- cut(df$antiguetat, quantile(df$antiguetat, prob = seq(0,1,0.2)), i
 table(df$f.antig)
 summary(df$f.antig)
 
+df$f.sqrtPrice <- cut(df$pricePerSquareFoot, quantile(df$pricePerSquareFoot, probs = seq(0,1,0.2)), include.lowest = TRUE)
+summary(df$f.sqrtPrice)
+
 ```
 
 
@@ -833,7 +836,7 @@ df$mvout <- 0
 df$mvout[idxmout] <- 1
 df$mvout <- factor(df$mvout, labels = c('MVOUT-no','MVOUT-yes'))
 
-res.cat <- catdes(df[,c(3:24)], num.var = 22)
+res.cat <- catdes(df[,c(3:25)], num.var = 23)
 res.cat$quanti.var # THAT VARIABLE OF BEING MULTIVARIATE OUTLYER OR NOT IS ASSOCIATED WITH PRICE AND LIVING AREA MOSTLY, THE RESGT ARE PRETTY CLOSE TO 0
 res.cat$category
 res.cat$quanti
@@ -859,7 +862,7 @@ summary(df)
 # TEST FOR DISCARD SERIAL CORRELATION. 
 
 ```{r}
-corr_mat <- cor(df[,c(7,8,10,11,12,14)])
+corr_mat <- cor(df[,c(3,4,6:9,11,22)])
 corr_mat
 plot(df[,c(7,9,10,11,12,14)])
 # PODEM OBSERVAR MES CORRELACIÓ / CORRELATION -> RELACIO LINEAL -> ENTRE LIVING AREA & BATHROOMS. CONSISTENT.
@@ -1067,7 +1070,7 @@ cor(df$price, df$livingArea) # 0.71 positive correlation.
 # Let's Profile the target numeric Variable. 
 
 ```{r}
-res.con <- condes(df[,c(2:23)], num.var = 2)
+res.con <- condes(df[,c(2:24)], num.var = 2)
 res.con$quanti
 res.con$quali
 
@@ -1082,179 +1085,58 @@ options(contrasts=c("contr.treatment","contr.treatment")) # FIXAR.
 ```
 # COMENÇANT MODELS LINEARS.
 
-```{r}
-mdl <- lm(price~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
-summary(mdl)
-par(mfrow=c(2,2))
-plot(mdl)
-boxCox(mdl)
-
-mdlv1 <- lm(sqrt(price)~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
-mdlv2<- lm(log(price)~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
-
-summary(mdlv1); summary(mdlv2)
-plot(mdlv1)
-plot(mdlv2)
-
-AIC(mdlv1,mdlv2) # ENS QUEDEM AMB EL MDLV2, AIC MES BAIX.
-vif(mdlv2)
-
-boxTidwell(log(price)~livingArea+pricePerSquareFoot, data = df)
-
-mdl2 <- lm(log(price)~log(livingArea)+bathrooms+log(pricePerSquareFoot)+bedrooms+garageSpaces+antiguetat, data = df)
-summary(mdl2)
-vif(mdl2)
-par(mfrow=c(2,2))
-plot(mdl2)
-residualPlots(mdl2)
-# hem vist en el summary que algunes B = 0, per p-value -> garageSpaces & antiguetat, anem a fer un model sense aquetses i probem amb anova
-mdlv2 <- lm(log(price)~log(livingArea)+bathrooms+log(pricePerSquareFoot)+bedrooms, data = df)
-summary(mdlv2)
-vif(mdlv2)
-plot(mdlv2)
-anova(mdl2, mdlv2) # ENS QUEDEM AMB EL SIMPLE.
-residualPlots(mdlv2)
-# AMB EL SUMMARY TORNEM A VEURE QUE HI HA ALGUNA VARIABLE QUE PODRIEM EXTREURE COM ES EL CAS DE BATHROOMS.
-
-mdlv3 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot)+bedrooms, data = df)
-summary(mdlv3)
-vif(mdlv3)
-plot(mdlv3)
-anova(mdlv3, mdlv2)
-# ENS QUEDARIEM AMB MODELV3 PERQUE ANOVA ENS DIU QUE SON EQUIVALENTS I ENS QUEDEM AMB EL SIMPLE.
-
-mdlv4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot), data = df)
-summary(mdlv4)
-vif(mdlv4)
-plot(mdlv4)
-anova(mdlv3, mdlv4)
-# ANOVA EL P-VALUE < 0.05 LLAVORS REFUTEM, SI FOS O.01 LLAVORS ENS QUEDARIEM AMB EL SIMPLE
-AIC(mdlv3, mdlv4)
-
-
-# ENS QUEDEM AMB MDLV4.
-
-mdlv4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot), data = df)
-summary(mdlv4)
-vif(mdlv4)
-par(mfrow=c(2,2))
-plot(mdlv4)
-# QUEDEM AMB EL 4.
-
-```
-**CATEGORIQUES**
-```{r}
-
-md1 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar + f.antig, data = df)
-summary(md1)
-vif(md1)
-plot(md1)
-
-md2 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar, data = df)
-summary(md2)
-plot(md2)
-residualPlots(md2)
-
-AIC(md1,md2)
-# MILLOR MODEL 2.
-md3 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar + f.antig + spa + pool + isNewConstruction + homeType + event, data = df)
-summary(md3)
-summary(df)
-stepx <- step(md3, k = log(nrow(df)))
-
-md4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bed + parking + f.gar + isNewConstruction + event, data = df)
-summary(md4)
-plot(md4)
-vif(md4)
-
-
-# interaccions
-
-mix1 <- lm(log(price)~(log(livingArea)+log(pricePerSquareFoot))*(f.bed + parking + f.gar + isNewConstruction + event), data = df)
-summary(mix1)
-par(mfrow=c(2,2))
-plot(mix1)
-vif(mix1)
-
-stepmm <- step(mix1, k=log(nrow(df)))
-vif(stepmm)
-mdstep <- lm(log(price) ~ log(livingArea) + log(pricePerSquareFoot) * (isNewConstruction + event), data = df)
-summary(mdstep)
-par(mfrow=c(2,2))
-plot(mdstep)
-
-
-df_cpx <- df
-
-Boxplot(cooks.distance(mdstep))
-Boxplot(rstudent(mdstep))
-resx1 <- cooks.distance(mdstep)
-resx2 <- rstudent(mdstep)
-
-idxx1 <- which(resx1 > 0.5 ); length(idxx1)
-idxx2 <- which(resx2 > 3 | resx2 < -3); length(idxx2)
-vif(mdstep)
-df <- df[-c(idxx1,idxx2),]
-residualPlots(mdstep)
-
-```
-
 # UN DELS PROBLEMES ERA QUE PRICEPERSQUAREFOOT ESTAA MASSA CORRELACIONAT SUPOSADAMENT AMB PRICE, llavors no l'usarem, perquè dona un valor de R-adjusted igual a 1, i per tant, es massa perfecte i poc realisrta llavors.
 
 ```{r}
+
 mx1 <- lm(log(price)~livingArea+bathrooms+bedrooms+garageSpaces+antiguetat, data = df)
 stepx1 <- step(mx1, k = log(nrow(df)))
 summary(mx1)
+par(mfrow=c(2,2))
 plot(mx1)
 boxTidwell(log(price)~livingArea+bathrooms+bedrooms, data = df)
 
-mx2 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2), data = df)
+mx2 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(bedrooms,2)+poly(antiguetat,2), data = df)
 summary(mx2)
+par(mfrow=c(2,2))
 plot(mx2)
 residualPlots(mx2)
 
-AIC(mx1,mx2)
+AIC(mx1,mx2) 
+"AQUI FINS LA PRIMERA VERSIO"
 # MILLLOR MX2.
 
-# AFEGIM CATEGORIQUES. 
-
-mc1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2) + pool + levels + event + parking + f.bed, data = df)
+# AFEGIM CATEGORIQUES. -> SEONGS EL MODEL MÉS BO NUMERIC DE ADALT.
+mc1 <- lm(log(price)~log(livingArea)+log(bathrooms)+log(bedrooms)+poly(antiguetat,2) + pool + levels + event + parking + f.gar + spa + isNewConstruction + homeType + f.sqrtPrice + hasPetsAllowed, data = df)
 summary(mc1)
+par(mfrow=c(2,2))
 plot(mc1)
 stepc <- step(mc1, k = log(nrow(df)))
+par(mfrow=c(2,2))
 plot(stepc)
-residualPlots(stepc)
+residualPlots(stepc) # aquest mc1, ja seria el millor categoric.
 
-# aquest mc1, ja seria el millor categoric. 
-
-
-# AFEGIM INTERACCIONS.
-mi1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2)* (pool + levels + event + parking + f.bed), data = df)
+# AFEGIM INTERACCIONS del primer d'abans
+mi1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2)* (levels+event+f.sqrtPrice), data = df)
 summary(mi1)
 stepi <- step(mi1, k = log(nrow(df)))
 summary(stepi)
-plot(stepi)
-
-summary(df$antiguetat)
-
-mi2  <- lm(
-  log(price) ~ log(livingArea) + log(bathrooms) + pool + event + f.bed +
-    (poly(antiguetat, 2) * levels) +
-    (poly(antiguetat, 2) * parking),
-  data = df
-)
-vif(mi2)
-summary(mi2)
 par(mfrow=c(2,2))
-plot(mi2)
-residualPlots(mi2)
+plot(stepi)
+vif(mi1)
 
-# DELETE OUTLAYERS, EXTREME. 4/5 iteracions. 
-df_copy <- df
-Boxplot(rstudent(mi2))
-Boxplot(cooks.distance(mi2))
-res1 <- rstudent(mi2)
-res2 <- cooks.distance(mi2)
+stepi <- lm(log(price) ~ log(livingArea) + log(bathrooms) + event + (poly(antiguetat, 2) * f.sqrtPrice), data=df)
+vif(stepi, type = 'predictor')
+summary(stepi)
+par(mfrow=c(2,2))
+plot(stepi)
+residualPlots(stepi)
+influencePlot(stepi)
+
+Boxplot(rstudent(stepi))
+Boxplot(cooks.distance(stepi))
+res1 <- rstudent(stepi)
+res2 <- cooks.distance(stepi)
 
 idx1 <- which(res1 < -3 | res1 > 3); length(idx1)
 idx2 <- which(res2 > 0.5); length(idx2)
@@ -1263,4 +1145,55 @@ df <- df[-c(idx1,idx2),]
 ```
 
 
+
+
+# SENSE RES DE PRICEPERSQUAREFOOT
+```{r}
+# CATEGORIQUES TEKA
+m0 <- lm(log(price)~log(livingArea)+f.bath + f.bed + f.antig + event + parking + levels + spa + pool + hasPetsAllowed + homeType + isNewConstruction, data = df)
+summary(m0)
+par(mfrow = c(2,2))
+plot(m0)
+vif(m0, type = 'predictor')
+step0 <- step(m0, k = log(nrow(df)))
+vif(step0, type = 'predictor')
+par(mfrow=c(2,2))
+plot(step0)
+residualPlots(step0)
+
+# MILLOR es el M0, treballant amb garagespaces i antiguetat com a numeriques.
+
+# interaccions
+
+mix1 <- lm(log(price)~(log(livingArea))*(f.antig + event + parking + levels + pool + hasPetsAllowed + homeType + f.bed + f.bath + isNewConstruction), data = df)
+summary(mix1)
+par(mfrow=c(2,2))
+plot(mix1)
+residualPlots(mix1)
+stepmix1 <- step(mix1, k=log(nrow(df)))
+vif(stepmix1, type = 'predictor')
+summary(stepmix1)
+par(mfrow=c(2,2))
+plot(stepmix1)
+AIC(stepmix1, step0)
+
+stepmix <- lm(log(price) ~ log(livingArea) * (parking + levels + hasPetsAllowed + homeType + f.bath + isNewConstruction) +event + pool + f.bed,data = df)
+summary(stepmix)
+par(mfrow=c(2,2))
+plot(stepmix)
+residualPlots(stepmix)
+influencePlot(stepmix)
+
+Boxplot(rstudent(stepmix))
+Boxplot(cooks.distance(stepmix))
+res1 <- rstudent(stepmix)
+res2 <- cooks.distance(stepmix)
+
+idx1 <- which(res1 < -3 | res1 > 3); length(idx1);
+idx2 <- which(res2 > 0.5); length(idx2); idx2
+df <- df[-c(idx1,idx2),]
+
+# ocasionalment quan veiem el valor que es massa extrem respecte els altres -> 2598 -> id : 2684
+
+```
 
