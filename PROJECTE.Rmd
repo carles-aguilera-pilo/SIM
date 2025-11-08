@@ -1082,7 +1082,6 @@ options(contrasts=c("contr.treatment","contr.treatment")) # FIXAR.
 ```
 # COMENÇANT MODELS LINEARS.
 
-
 ```{r}
 mdl <- lm(price~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
 summary(mdl)
@@ -1159,12 +1158,42 @@ AIC(md1,md2)
 # MILLOR MODEL 2.
 md3 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar + f.antig + spa + pool + isNewConstruction + homeType + event, data = df)
 summary(md3)
+summary(df)
 stepx <- step(md3, k = log(nrow(df)))
 
 md4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bed + parking + f.gar + isNewConstruction + event, data = df)
 summary(md4)
 plot(md4)
 vif(md4)
+
+
+# interaccions
+
+mix1 <- lm(log(price)~(log(livingArea)+log(pricePerSquareFoot))*(f.bed + parking + f.gar + isNewConstruction + event), data = df)
+summary(mix1)
+par(mfrow=c(2,2))
+plot(mix1)
+
+stepmm <- step(mix1, k=log(nrow(df)))
+
+mdstep <- lm(log(price) ~ log(livingArea) + log(pricePerSquareFoot) * (isNewConstruction + event), data = df)
+summary(mdstep)
+par(mfrow=c(2,2))
+plot(mdstep)
+
+
+df_cpx <- df
+
+Boxplot(cooks.distance(mdstep))
+Boxplot(rstudent(mdstep))
+resx1 <- cooks.distance(mdstep)
+resx2 <- rstudent(mdstep)
+
+idxx1 <- which(resx1 > 0.5 ); length(idxx1)
+idxx2 <- which(resx2 > 3 | resx2 < -3); length(idxx2)
+
+df <- df[-c(idxx1,idxx2),]
+residualPlots(mdstep)
 
 ```
 
