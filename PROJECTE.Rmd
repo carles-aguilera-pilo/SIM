@@ -735,7 +735,7 @@ df$f.bath <- ifelse(df$bathrooms %in% c(1, 2, 3),
 table(df$f.bath)
 
 df$f.bed <- as.factor(df$bedrooms)
-df$f.bed <- cut(df$bedrooms, quantile(df$bedrooms, prob = seq(0,1,0.5)))
+df$f.bed <- cut(df$bedrooms, quantile(df$bedrooms, prob = seq(0,1,0.5)), include.lowest = TRUE)
 table(df$f.bed)
 
 summary(df$garageSpaces)
@@ -754,8 +754,10 @@ df$f.gar <- cut(
 table(df$f.gar)
 
 df$antiguetat <- 2021 - df$yearBuilt
-df$f.antig <- cut(df$antiguetat, quantile(df$antiguetat, prob = seq(0,1,0.2)))
+df$f.antig <- cut(df$antiguetat, quantile(df$antiguetat, prob = seq(0,1,0.2)), include.lowest = TRUE)
 table(df$f.antig)
+summary(df$f.antig)
+
 ```
 
 
@@ -1067,9 +1069,8 @@ cor(df$price, df$livingArea) # 0.71 positive correlation.
 ```{r}
 res.con <- condes(df[,c(2:23)], num.var = 2)
 res.con$quanti
-# variables which target price is much more correlated -> livingArea + bathrooms + bedrooms + garagespaces + yearbuilt.
 res.con$quali
-# The categorical one's which have more association are : levels    //       city       //    county . 
+
 ```
 
 For those one's that are more correlated we will construct the regression linear model.
@@ -1288,3 +1289,163 @@ boxCox(m2)
 anova(m1,m2) 
 # hem quedo amb el complex. 
 ```
+
+
+
+
+
+
+# COMENÇANT MODELS LINEARS.
+
+
+```{r}
+mdl <- lm(price~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
+summary(mdl)
+par(mfrow=c(2,2))
+plot(mdl)
+boxCox(mdl)
+
+mdlv1 <- lm(sqrt(price)~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
+mdlv2<- lm(log(price)~livingArea+bathrooms+pricePerSquareFoot+bedrooms+garageSpaces+antiguetat, data = df)
+
+summary(mdlv1); summary(mdlv2)
+plot(mdlv1)
+plot(mdlv2)
+
+AIC(mdlv1,mdlv2) # ENS QUEDEM AMB EL MDLV2, AIC MES BAIX.
+vif(mdlv2)
+
+boxTidwell(log(price)~livingArea+pricePerSquareFoot, data = df)
+
+mdl2 <- lm(log(price)~log(livingArea)+bathrooms+log(pricePerSquareFoot)+bedrooms+garageSpaces+antiguetat, data = df)
+summary(mdl2)
+vif(mdl2)
+par(mfrow=c(2,2))
+plot(mdl2)
+residualPlots(mdl2)
+# hem vist en el summary que algunes B = 0, per p-value -> garageSpaces & antiguetat, anem a fer un model sense aquetses i probem amb anova
+mdlv2 <- lm(log(price)~log(livingArea)+bathrooms+log(pricePerSquareFoot)+bedrooms, data = df)
+summary(mdlv2)
+vif(mdlv2)
+plot(mdlv2)
+anova(mdl2, mdlv2) # ENS QUEDEM AMB EL SIMPLE.
+residualPlots(mdlv2)
+# AMB EL SUMMARY TORNEM A VEURE QUE HI HA ALGUNA VARIABLE QUE PODRIEM EXTREURE COM ES EL CAS DE BATHROOMS.
+
+mdlv3 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot)+bedrooms, data = df)
+summary(mdlv3)
+vif(mdlv3)
+plot(mdlv3)
+anova(mdlv3, mdlv2)
+# ENS QUEDARIEM AMB MODELV3 PERQUE ANOVA ENS DIU QUE SON EQUIVALENTS I ENS QUEDEM AMB EL SIMPLE.
+
+mdlv4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot), data = df)
+summary(mdlv4)
+vif(mdlv4)
+plot(mdlv4)
+anova(mdlv3, mdlv4)
+# ANOVA EL P-VALUE < 0.05 LLAVORS REFUTEM, SI FOS O.01 LLAVORS ENS QUEDARIEM AMB EL SIMPLE
+AIC(mdlv3, mdlv4)
+
+
+# ENS QUEDEM AMB MDLV4.
+
+mdlv4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot), data = df)
+summary(mdlv4)
+vif(mdlv4)
+plot(mdlv4)
+# QUEDEM AMB EL 4.
+
+```
+**CATEGORIQUES**
+```{r}
+
+md1 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar + f.antig, data = df)
+summary(md1)
+vif(md1)
+plot(md1)
+
+md2 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar, data = df)
+summary(md2)
+plot(md2)
+residualPlots(md2)
+
+AIC(md1,md2)
+# MILLOR MODEL 2.
+md3 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bath + f.bed + levels + parking + f.gar + f.antig + spa + pool + isNewConstruction + homeType + event, data = df)
+summary(md3)
+stepx <- step(md3, k = log(nrow(df)))
+
+md4 <- lm(log(price)~log(livingArea)+log(pricePerSquareFoot) + f.bed + parking + f.gar + isNewConstruction + event, data = df)
+summary(md4)
+plot(md4)
+vif(md4)
+
+```
+
+# UN DELS PROBLEMES ERA QUE PRICEPERSQUAREFOOT ESTAA MASSA CORRELACIONAT SUPOSADAMENT AMB PRICE, llavors no l'usarem, perquè dona un valor de R-adjusted igual a 1, i per tant, es massa perfecte i poc realisrta llavors.
+
+```{r}
+mx1 <- lm(log(price)~livingArea+bathrooms+bedrooms+garageSpaces+antiguetat, data = df)
+stepx1 <- step(mx1, k = log(nrow(df)))
+summary(mx1)
+plot(mx1)
+boxTidwell(log(price)~livingArea+bathrooms+bedrooms, data = df)
+
+mx2 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2), data = df)
+summary(mx2)
+plot(mx2)
+residualPlots(mx2)
+
+AIC(mx1,mx2)
+# MILLLOR MX2.
+
+# AFEGIM CATEGORIQUES. 
+
+
+mc1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2) + pool + levels + event + parking + f.bed, data = df)
+summary(mc1)
+plot(mc1)
+stepc <- step(mc1, k = log(nrow(df)))
+plot(stepc)
+residualPlots(stepc)
+
+# aquest mc1, ja seria el millor categoric. 
+
+
+# AFEGIM INTERACCIONS.
+mi1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(antiguetat,2)* (pool + levels + event + parking + f.bed), data = df)
+summary(mi1)
+stepi <- step(mi1, k = log(nrow(df)))
+summary(stepi)
+plot(stepi)
+
+summary(df$antiguetat)
+
+mi2 <- md_final <- lm(
+  log(price) ~ log(livingArea) + log(bathrooms) + pool + event + f.bed +
+    (poly(antiguetat, 2) * levels) +
+    (poly(antiguetat, 2) * parking),
+  data = df
+)
+vif(mi2)
+summary(mi2)
+par(mfrow=c(2,2))
+plot(mi2)
+
+
+# DELETE OUTLAYERS, EXTREME.
+df_copy <- df
+Boxplot(rstudent(mi2))
+Boxplot(cooks.distance(mi2))
+res1 <- rstudent(mi2)
+res2 <- cooks.distance(mi2)
+
+idx1 <- which(res1 < -3 | res1 > 3); length(idx1)
+idx2 <- which(res2 > 0.5); length(idx2)
+
+df <- df[-c(idx1,idx2),]
+```
+
+
+
