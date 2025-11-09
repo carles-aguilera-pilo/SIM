@@ -748,7 +748,6 @@ For those one's that are more correlated we will construct the regression linear
 options(contrasts=c("contr.treatment","contr.treatment")) # FIXAR.
 ```
 # COMENÇANT MODELS LINEARS.
-# UN DELS PROBLEMES ERA QUE PRICEPERSQUAREFOOT ESTAA MASSA CORRELACIONAT SUPOSADAMENT AMB PRICE, llavors no l'usarem, perquè dona un valor de R-adjusted igual a 1, i per tant, es massa perfecte i poc realisrta llavors.
 
 ```{r}
 
@@ -769,10 +768,15 @@ AIC(mx1,mx2)
 "AQUI FINS LA PRIMERA VERSIO"
 # MILLLOR MX2.
 
+# PROBEM SI ES MILLLOR SEGUIR UTILITZANT NUMERIQUES O CATEGORIQUES. 
+
+# usem les discretitzades
 mcm <- mc1 <- lm(log(price)~log(livingArea)+f.bath +f.bed+ f.antig + pool + levels + event + parking + f.gar + spa + isNewConstruction + homeType + f.sqrtPrice + hasPetsAllowed, data = df)
-# AFEGIM CATEGORIQUES. -> SEONGS EL MODEL MÉS BO NUMERIC DE ADALT.
+
+#seguim amb numeriques
 mc1 <- lm(log(price)~log(livingArea)+log(bathrooms)+poly(bedrooms,2)+poly(antiguetat,2) + pool + levels + event + parking + f.gar + spa + isNewConstruction + homeType + f.sqrtPrice + hasPetsAllowed, data = df)
 AIC(mcm,mc1)
+# usem les discretitzades, AIC es menor.
 mc1 <- lm(log(price)~log(livingArea)+f.bath +f.bed+ f.antig + pool + levels + event + parking + f.gar + spa + isNewConstruction + homeType + f.sqrtPrice + hasPetsAllowed, data = df)
 summary(mc1)
 par(mfrow=c(2,2))
@@ -783,15 +787,16 @@ plot(stepc)
 residualPlots(stepc) # aquest mc1, ja seria el millor categoric.
 
 # AFEGIM INTERACCIONS del primer d'abans
-mi1 <- lm(log(price)~log(livingArea)+f.bath + f.sqrtPrice, data = df)
+mi1 <- lm(log(price)~(log(livingArea))*(f.bath +f.antig+event+isNewConstruction+homeType+f.sqrtPrice), data = df)
 summary(mi1)
 stepi <- step(mi1, k = log(nrow(df)))
 summary(stepi)
 par(mfrow=c(2,2))
 plot(stepi)
+residualPlots(stepi)
 vif(mi1)
 
-stepi <- lm(log(price)~(log(livingArea))*(f.bath + f.sqrtPrice), data = df)
+stepi <- lm(log(price) ~ log(livingArea) * f.sqrtPrice + f.antig + event + homeType,data=df)
 vif(stepi, type = 'predictor')
 summary(stepi)
 par(mfrow=c(2,2))
@@ -823,7 +828,7 @@ par(mfrow=c(2,2))
 plot(step0)
 residualPlots(step0)
 
-# MILLOR es el M0, treballant amb garagespaces i antiguetat com a numeriques.
+# Treballem amb categoriques perquè hem vist adalt com es millor treballar amb categoriques.
 
 # interaccions
 
@@ -839,12 +844,13 @@ par(mfrow=c(2,2))
 plot(stepmix1)
 AIC(stepmix1, step0)
 
-stepmix <- lm(log(price) ~ log(livingArea) * (parking + levels + hasPetsAllowed + homeType + f.bath + isNewConstruction) +event + pool + f.bed,data = df)
+stepmix<-lm(log(price)~log(livingArea)*(f.antig+levels+hasPetsAllowed+f.bath+isNewConstruction)+event+parking+pool+ f.bed,data = df)
 summary(stepmix)
 par(mfrow=c(2,2))
 plot(stepmix)
 residualPlots(stepmix)
 influencePlot(stepmix)
+vif(stepmix, type = 'predictor')
 
 Boxplot(rstudent(stepmix))
 Boxplot(cooks.distance(stepmix))
